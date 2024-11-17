@@ -1,0 +1,5 @@
+main.bin
+main.map
+main_BSS.bin
+main_CODE.bin
+main_DATA.bin
