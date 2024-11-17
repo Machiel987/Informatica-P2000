@@ -1,6 +1,7 @@
-Repository voor P-2000 project
+Eindproject informatica op Philips P2000T
+Lorentz Casimir Lyceum: 2024/25
 
-Deelnemers van dit project zijn:
-Machiel de Vries
-Joost Lemmens
+Voor meer informatie, vraag:
+Machiel de Vries,
+Joost Lemmens,
 Jasper van der Geer
