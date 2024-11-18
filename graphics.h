@@ -13,7 +13,7 @@
 #define CYANTEXT 6
 #define WHITETEXT 7
 
-//Collors for using pixels on the screen
+//Colors for using pixels on the screen
 #define REDGFS 17
 #define GREENGFS 18
 #define YELLOWGFS 19
