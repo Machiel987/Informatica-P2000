@@ -53,3 +53,5 @@ void freeSprite(struct sprite *s);
 void getSprite(struct sprite* buf, unsigned char x0, unsigned char y0);
 void rollLeft(unsigned char ln, unsigned char start, unsigned char end);
 void rollRight(unsigned char ln, unsigned char start, unsigned char end);
+void rollUp(unsigned char col, unsigned char start, unsigned char end);
+void rollDown(unsigned char col, unsigned char start, unsigned char end);

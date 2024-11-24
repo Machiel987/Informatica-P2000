@@ -15,7 +15,9 @@ char* vidmem = VIDMEM;
 //LUT where first 12 bits show address of first character in line of pixels and
 //last 4 bits show 0, 2 or 4 depending on 'parity' of pixel line
 unsigned short yAdrLUT[75];
-unsigned char flipTable[128]; //Table with flipped version of characters
+unsigned char rollTableX[128]; //Table with flipped version of characters
+unsigned char rollTableYUp[128]; //Table with up-shifted version of charecters
+unsigned char rollTableYDn[128]; //Table with down-shifted version of characters
 unsigned char pxNumToChar[6]; //Convert pixel num [0..5] to actual character
 
 //Function for calculating 2^n
@@ -33,10 +35,19 @@ void startGraphics(void){
     for (unsigned int i = 0; i < 1919; i++) vidmem[i] = 32;
     for (unsigned int i = 0; i <= 1760; i += 80) vidmem[i] = WHITEGFS;
 
+    //Deeply magical bit shi(f)t
     for (unsigned char i = 0; i < 128; i++){
         unsigned char lft = ((i >> 1) & 0x1F) & ((i >> 2) | 0xF);
         unsigned char rgt = ((i << 1) & 0x5F) & ((i << 2) | 0x3F);
-        flipTable[i] = (lft & 0x15) | (rgt & 0x4A) | 0x20;
+        rollTableX[i] = (lft & 0x15) | (rgt & 0x4A) | 0x20;
+    }
+    for (unsigned char i = 0; i < 128; i++){
+        unsigned char top = ((i >> 2) & 0xF) & (((i & 0x40) >> 3) | 7);
+        unsigned char bot = ((i & 1) << 4) | ((i & 2) << 5);
+        rollTableYUp[i] = bot | top | 0x20;
+    }
+    for (unsigned char i = 0; i < 128; i++){
+        rollTableYDn[i] = rollTableYUp[rollTableYUp[i]];
     }
 
     return;
@@ -543,15 +554,14 @@ void drawSprite(struct sprite* buf, unsigned char x0, unsigned char y0){
     return;
 }
 
-//Rolls on line from characters start to end on pixel to the left.
-//Does not work for test
+//Rolls a line from characters start to end one pixel to the left.
 void rollLeft(unsigned char ln, unsigned char start, unsigned char end){
     unsigned char *adr = (unsigned char*) (vidmem + 80*ln + start);
-    unsigned char flip = flipTable[*adr];
+    unsigned char flip = rollTableX[*adr];
 
     for(unsigned char i = start; i <= end; i++){
         adr++;
-        unsigned char nextFlip = flipTable[*adr];
+        unsigned char nextFlip = rollTableX[*adr];
         adr--;
         *adr = (flip & 0b00110101) | (nextFlip & 0b01101010);
 
@@ -564,15 +574,14 @@ void rollLeft(unsigned char ln, unsigned char start, unsigned char end){
 }
 
 
-//Rolls on line from characters start to end on pixel to the right.
-//Does not work for test
+//Rolls a line from characters start to end one pixel to the right.
 void rollRight(unsigned char ln, unsigned char start, unsigned char end){
     unsigned char *adr = (unsigned char*) (vidmem + 80*ln + end);
-    unsigned char flip = flipTable[*adr];
+    unsigned char flip = rollTableX[*adr];
 
     for(unsigned char i = end; i >= start; i--){
         adr--;
-        unsigned char nextFlip = flipTable[*adr];
+        unsigned char nextFlip = rollTableX[*adr];
         adr++;
         *adr = (flip & 0b01101010) | (nextFlip & 0b00110101);
 
@@ -582,4 +591,42 @@ void rollRight(unsigned char ln, unsigned char start, unsigned char end){
 
     adr++;
     *adr &= 0b01101010;
+}
+
+//Rolls a column from characters start to end one pixel up
+void rollUp(unsigned char col, unsigned char start, unsigned char end){
+    unsigned char *adr = (unsigned char*) (vidmem + 80*start + col);
+    unsigned char flip = rollTableYUp[*adr];
+
+    for (unsigned char i = start; i <= end; i++){
+        adr += 80;
+        unsigned char nextFlip = rollTableYUp[*adr];
+        adr -= 80;
+        *adr = (flip & 0xF) | (nextFlip & 0x70);
+        
+        flip = nextFlip;
+        adr += 80;
+    }
+
+    adr -= 80;
+    *adr &= 0x2F;
+}
+
+//Rolls a column from characters start to end one pixel down
+void rollDown(unsigned char col, unsigned char start, unsigned char end){
+    unsigned char *adr = (unsigned char*) (vidmem + 80*end + col);
+    unsigned char flip = rollTableYDn[*adr];
+
+    for (unsigned char i = end; i >= start; i--){
+        adr -= 80;
+        unsigned char nextFlip = rollTableYDn[*adr];
+        adr += 80;
+        *adr = (flip & 0x7C) | (nextFlip & 3);
+        
+        flip = nextFlip;
+        adr -= 80;
+    }
+
+    adr += 80;
+    *adr &= 0x7C;
 }

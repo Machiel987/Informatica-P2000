@@ -31,17 +31,13 @@ int main(void){
 
     vertLine(25, 35, 45, true);
 
-    drawText(60, 50, "hai", 3, true, YELLOWTEXT);
-    drawText(47, 35, "Mooi", 4, false, BLUETEXT);
-
-/*
-    for (unsigned char i = 0; i < 40; i++){
-        for (unsigned char j = 0; j < 20; j++){
-            rollLeft(j, 1, 40);
+    //drawText(60, 50, "hai", 3, true, YELLOWTEXT);
+    //drawText(47, 35, "Mooi", 4, false, BLUETEXT);
+    for (unsigned char l = 0; l < 40; l++){
+        for (unsigned char i = 2; i < 40; i++){
+            rollDown(i, 1, 10);
         }
     }
-*/
-
 
 #endif
 
@@ -68,6 +64,3 @@ int main(void){
 
     return 0;
 }
-//Machiel test git school 
-//Jasper test git school
-//Joost test git school
