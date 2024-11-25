@@ -33,11 +33,8 @@ int main(void){
 
     //drawText(60, 50, "hai", 3, true, YELLOWTEXT);
     //drawText(47, 35, "Mooi", 4, false, BLUETEXT);
-    for (unsigned char l = 0; l < 40; l++){
-        for (unsigned char i = 2; i < 40; i++){
-            rollDown(i, 1, 10);
-        }
-    }
+    
+    
 
 #endif
 

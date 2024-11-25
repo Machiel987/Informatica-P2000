@@ -20,6 +20,11 @@ unsigned char rollTableYUp[128]; //Table with up-shifted version of charecters
 unsigned char rollTableYDn[128]; //Table with down-shifted version of characters
 unsigned char pxNumToChar[6]; //Convert pixel num [0..5] to actual character
 
+unsigned char windowTLX = 0;
+unsigned char windowTLY = 0;
+unsigned char windowBRX = 39;
+unsigned char windowBRY = 23;
+
 //Function for calculating 2^n
 unsigned char pwr2 (unsigned char e){
     unsigned char res = 1;
@@ -51,6 +56,14 @@ void startGraphics(void){
     }
 
     return;
+}
+
+//Sets drawing window
+void setWindow(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY){
+    windowTLX = TLX;
+    windowTLY = TLY;
+    windowBRX = BRX;
+    windowBRY = BRY;
 }
 
 inline static unsigned char inRange(unsigned char x, unsigned char y){
@@ -629,4 +642,28 @@ void rollDown(unsigned char col, unsigned char start, unsigned char end){
 
     adr += 80;
     *adr &= 0x7C;
+}
+
+//Rolls drawing window to the left
+void rollWindowLeft(){
+    for (unsigned char i = windowTLY; i < windowBRY; i++)
+        rollLeft(i, windowTLX, windowBRX);
+}
+
+//Rolls drawing window to the right
+void rollWindowRight(){
+    for (unsigned char i = windowTLY; i < windowBRY; i++)
+        rollRight(i, windowTLX, windowBRX);
+}
+
+//Rolls drawing window up
+void rollWindowUp(){
+    for (unsigned char i = windowTLX; i < windowBRX; i++)
+        rollUp(i, windowTLY, windowTLY);
+}
+
+//Rolls drawing window down
+void rollWindowDown(){
+    for (unsigned char i = windowTLX; i < windowBRX; i++)
+        rollDown(i, windowTLY, windowTLY);
 }
