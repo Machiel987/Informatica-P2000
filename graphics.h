@@ -31,6 +31,14 @@ struct sprite{
 
 //Constants
 extern char* vidmem;
+extern unsigned short yAdrLUT[75];
+static const unsigned char pxNumToChar[6] = {1,2,4,8,16,64};
+#define pxNumToChar0 ((unsigned char) 1)
+#define pxNumToChar1 ((unsigned char) 2)
+#define pxNumToChar2 ((unsigned char) 4)
+#define pxNumToChar3 ((unsigned char) 8)
+#define pxNumToChar4 ((unsigned char)16)
+#define pxNumToChar5 ((unsigned char)64)
 
 //Function declarations
 void startGraphics(void);
@@ -55,7 +63,7 @@ void rollLeft(unsigned char ln, unsigned char start, unsigned char end);
 void rollRight(unsigned char ln, unsigned char start, unsigned char end);
 void rollUp(unsigned char col, unsigned char start, unsigned char end);
 void rollDown(unsigned char col, unsigned char start, unsigned char end);
-void rollWindowLeft();
-void rollWindowRight();
-void rollWindowUp();
-void rollWindowDown();
+void rollWindowLeft(void);
+void rollWindowRight(void);
+void rollWindowUp(void);
+void rollWindowDown(void);

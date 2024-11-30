@@ -18,24 +18,14 @@ unsigned short yAdrLUT[75];
 unsigned char rollTableX[128]; //Table with flipped version of characters
 unsigned char rollTableYUp[128]; //Table with up-shifted version of charecters
 unsigned char rollTableYDn[128]; //Table with down-shifted version of characters
-unsigned char pxNumToChar[6]; //Convert pixel num [0..5] to actual character
 
 unsigned char windowTLX = 0;
 unsigned char windowTLY = 0;
 unsigned char windowBRX = 39;
 unsigned char windowBRY = 23;
 
-//Function for calculating 2^n
-unsigned char pwr2 (unsigned char e){
-    unsigned char res = 1;
-    for (int i = 0; i < e; i++) res <<= 1;
-    return res;
-}
-
 //Fills all LUTs and initializes screen, must be called before attempting graphics routines
 void startGraphics(void){
-    for (unsigned char i = 0; i < 6; i++) pxNumToChar[i] = pwr2(i < 5 ? i : i + 1);
-
     for (unsigned char i = 0; i < 75; i++) yAdrLUT[i] = 0x5000 + 80 * (i/3) + 2 * (i%3);
     for (unsigned int i = 0; i < 1919; i++) vidmem[i] = 32;
     for (unsigned int i = 0; i <= 1760; i += 80) vidmem[i] = WHITEGFS;
@@ -645,25 +635,25 @@ void rollDown(unsigned char col, unsigned char start, unsigned char end){
 }
 
 //Rolls drawing window to the left
-void rollWindowLeft(){
+void rollWindowLeft(void){
     for (unsigned char i = windowTLY; i < windowBRY; i++)
         rollLeft(i, windowTLX, windowBRX);
 }
 
 //Rolls drawing window to the right
-void rollWindowRight(){
+void rollWindowRight(void){
     for (unsigned char i = windowTLY; i < windowBRY; i++)
         rollRight(i, windowTLX, windowBRX);
 }
 
 //Rolls drawing window up
-void rollWindowUp(){
+void rollWindowUp(void){
     for (unsigned char i = windowTLX; i < windowBRX; i++)
         rollUp(i, windowTLY, windowTLY);
 }
 
 //Rolls drawing window down
-void rollWindowDown(){
+void rollWindowDown(void){
     for (unsigned char i = windowTLX; i < windowBRX; i++)
         rollDown(i, windowTLY, windowTLY);
 }
