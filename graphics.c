@@ -24,11 +24,15 @@ unsigned char windowTLY = 0;
 unsigned char windowBRX = 39;
 unsigned char windowBRY = 23;
 
+void initializeScreen(void){
+    for (unsigned int i = 0; i < 1919; i++) vidmem[i] = 32;
+    for (unsigned int i = 0; i <= 1840; i += 80) vidmem[i] = WHITEGFS;
+}
+
 //Fills all LUTs and initializes screen, must be called before attempting graphics routines
 void startGraphics(void){
     for (unsigned char i = 0; i < 75; i++) yAdrLUT[i] = 0x5000 + 80 * (i/3) + 2 * (i%3);
-    for (unsigned int i = 0; i < 1919; i++) vidmem[i] = 32;
-    for (unsigned int i = 0; i <= 1760; i += 80) vidmem[i] = WHITEGFS;
+    initializeScreen();
 
     //Deeply magical bit shi(f)t
     for (unsigned char i = 0; i < 128; i++){
@@ -106,6 +110,13 @@ inline void setPixel(unsigned char x, unsigned char y, unsigned char wt){
     unsafeSetPixel(x, y, wt);
 
     return;
+}
+
+unsigned char getPixel(unsigned char x, unsigned char y){
+    unsigned char* charAdr = (unsigned char*) (yAdrLUT[y] & 0xFFF0) + (x >> 1);
+    unsigned char  pixelNum = (x & 1) + (yAdrLUT[y] & 0xF);
+
+    return ((*charAdr) & pxNumToChar[pixelNum]) != 0;
 }
 
 //Draws or erases a line between any 2 screen coordinates.
@@ -426,14 +437,15 @@ void fillRectangleColor(unsigned char x0, unsigned char y0, unsigned char x1, un
 }
 
 //Prints text in a given color to the screen. This text can be normal or double height
-//Due to the text being drawn on pixel y coordinates divisible by 3, the text might not match the desired location perfectly
-void drawText(unsigned char x, unsigned char y, char* text, unsigned char textLen, unsigned char dblH, unsigned char color){
+//Due to the text being drawn on pixel coordinates, the text might not match the desired location perfectly
+void drawText(unsigned char x, unsigned char y, char* text, unsigned char dblH, unsigned char color){
     unsigned char* startAdr = (unsigned char*) ((yAdrLUT[y] & 0xFFF0) + (x >> 1));
+    size_t textLen = strlen(text);
 
     if (dblH) {*(startAdr - 2) = color; *(startAdr - 1) = 0xD;}
     else *(startAdr - 1) = color;
 
-    for (unsigned char i = 0; i < textLen; i++){
+    for (size_t i = 0; i < textLen; i++){
         *(startAdr + i) = text[i];
     }
     
