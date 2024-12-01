@@ -9,11 +9,14 @@ main.bin main.map main.rom: main.c graphics.h graphics.c
 	-pragma-define:CRT_STACK_SIZE=256 \
 	-pragma-define:CRT_INCLUDE_PREAMBLE=1 \
 	-pragma-define:CLIB_FOPEN_MAX=0 \
-	--max-allocs-per-node10000 \
 	-SO3 -bn main.bin \
+	--max-allocs-per-node10000 \
 	--fsigned-char \
 	-create-app -m
 	rm main.bin
 	mv main.rom main.bin
+
+#	+embedded -clib=new \
+#	-compiler=sccz80 -O3 \
 
 #	-S --c-code-in-asm -z80-verb \
