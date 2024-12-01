@@ -4,6 +4,14 @@
 
 #include "graphics.h"
 
+#define keySpace 17
+#define keyEnter 52
+
+#define keyUp 2
+#define keyRight 23
+#define keyDown 21
+#define keyLeft 0
+
 unsigned char popCount[] = {
     0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
     1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
@@ -23,6 +31,14 @@ unsigned char popCount[] = {
     4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8,
 };
 
+unsigned char getKey(void){
+    return *(unsigned char*) 0x600D;
+}
+
+unsigned int getTime(void){
+    return *(unsigned int*) 0x6010;
+}
+
 void drawBoard(unsigned char* boardStatus, unsigned char* adr, unsigned char w, unsigned char h){
     for (unsigned char j = 0; j < h; j++){ //j = y-coordinate
         for (unsigned char i = 0; i < w; i++){ //i = x-coordinate
@@ -31,10 +47,13 @@ void drawBoard(unsigned char* boardStatus, unsigned char* adr, unsigned char w, 
     }
 }
 
-void evolveBoard(unsigned char* adr, unsigned char* out, unsigned char w, unsigned char h){
+void evolveBoard(unsigned char* adr, unsigned char* out, unsigned char w, unsigned char h, unsigned char stopChar){
     memset(out, 0x20, w*h);
 
     for (unsigned char j = 0; j < h; j++){
+
+        if (getKey() == stopChar);
+
         for (unsigned char i = 0; i < w; i++){
             register unsigned char circum = 0;
             unsigned char val = *adr;
@@ -77,34 +96,132 @@ void evolveBoard(unsigned char* adr, unsigned char* out, unsigned char w, unsign
     }
 }
 
-void runGOT(char* adr, unsigned char w, unsigned char h){
+void runGOT(char* adr, unsigned char w, unsigned char h, unsigned char stopChar){
     unsigned char* newBoard = (unsigned char*) malloc(((unsigned) w) * ((unsigned) h));
     if (newBoard == NULL) return;
 
-    for (unsigned char i = 0; i < 20; i++){
-        evolveBoard(adr, newBoard, w, h);
+    while (getKey() != stopChar){
+        evolveBoard(adr, newBoard, w, h, stopChar);
         drawBoard(newBoard, adr, w, h);
     }
 
     free(newBoard);
 }
 
+void drawIntroScene(void){
+    drawText(10, 0, "Game of Life", true, WHITETEXT);
+
+    horzLine(4, 77, 38, true);
+
+    drawText(30, 70, "Press Enter to continue", false, WHITETEXT);
+
+    unsigned char* drawAdr = (unsigned char*) (vidmem + 3*80 + 2);
+    runGOT(drawAdr, 37, 19, keyEnter);
+
+    while (getKey() != keyEnter);
+}
+
+void drawInfoScene(void){
+    while (getKey() == keyEnter);
+
+    drawText(10, 0, "Game of Life", true, WHITETEXT);
+
+    drawText(4, 9,  "The Game of Life, invented by", false, WHITETEXT);
+    drawText(4, 12, "mathematician John Conway is a very", false, WHITETEXT);
+    drawText(4, 15, "simple 0-player game played on a ", false, WHITETEXT);
+    drawText(4, 18, "2D grid of cells with just 4 rules:", false, WHITETEXT);
+    drawText(6, 24, "-If an alive cell is surrounded by <2", false, WHITETEXT);
+    drawText(8, 27, "or >3 alive cells, the cell dies.", false, WHITETEXT);
+    drawText(6, 30, "-If an alive cell is surrounded by 2", false, WHITETEXT);
+    drawText(8, 33, "or 3 alive cells, the cell survives.", false, WHITETEXT);
+    drawText(6, 36, "-If a dead cell is surrounded by 3", false, WHITETEXT);
+    drawText(8, 39, "alive cells, the cell comes to life.", false, WHITETEXT);
+    drawText(6, 42, "-If a dead cell is surrounded by <3,", false, WHITETEXT);
+    drawText(8, 45, "or >3 alive cells, stays dead.", false, WHITETEXT);
+
+    drawText(30, 70, "Press Enter to continue", false, WHITETEXT);
+
+    while (getKey() != keyEnter);
+}
+
+void drawInstructionScreen(void){
+    while (getKey() == keyEnter);
+
+    drawText(10, 0, "Game of Life", true, WHITETEXT);
+
+    drawText(4, 9,  "Walk through the screen using", false, WHITETEXT);
+    drawText(4, 12, "up, down, right and left arrows.", false, WHITETEXT);
+
+    drawText(4, 18, "Use space to place/delete a pixel.", false, WHITETEXT);
+
+    drawText(4, 24, "Press enter when you're ready to play!", false, WHITETEXT);
+
+    drawText(4, 30, "Press space to stop the simulation.", false, WHITETEXT);
+
+    drawText(30, 70, "Press Enter to continue", false, WHITETEXT);
+
+    while (getKey() != keyEnter);
+}
+
 int main(void){
     startGraphics();
+    drawIntroScene();
+    initializeScreen();
+    drawInfoScene();
+    initializeScreen();
+    drawInstructionScreen();
 
-    unsigned char* drawAdr = (unsigned char*) (vidmem + 80*2 + 4);
+    startRun: 
+    initializeScreen();
 
-    unsigned short *p_counter = (unsigned short*) 0x6010;
-    short startTime = *p_counter;
+    sprintf(vidmem + 1840, "Press enter to start");
 
-    //drawLine(10, 10, 60, 50, true);
-    setPixel(30, 30, true); //28, 26
-    setPixel(31, 30, true);
-    setPixel(31, 29, true);
-    setPixel(32, 29, true);
-    setPixel(32, 31, true);
+    while (getKey() == keyEnter);
 
-    runGOT(drawAdr, 30, 15);
+    //setPixel(30, 30, true);
+    //setPixel(31, 30, true);
+    //setPixel(31, 29, true);
+    //setPixel(32, 29, true);
+    //setPixel(32, 31, true);
+
+    vertLine(2, 1, 67, true);
+    vertLine(79, 1, 67, true);
+    horzLine(2, 79, 1, true);
+    horzLine(2, 79, 67, true);
+
+    unsigned char key = 255, prevKey = 255;
+    unsigned char cursorPosX = 4, cursorPosY = 3;
+
+    while (getKey() != keyEnter){
+        unsigned char prevPixel = getPixel(cursorPosX, cursorPosY);
+        setPixel(cursorPosX, cursorPosY, true);
+
+        while (key == prevKey){
+            unsigned int startTime = getTime();
+            while (key == prevKey && getTime() - startTime < 30){
+                key = getKey();
+            }
+
+            setPixel(cursorPosX, cursorPosY, !getPixel(cursorPosX, cursorPosY));
+        }
+
+        setPixel(cursorPosX, cursorPosY, prevPixel);
+        prevKey = key;
+
+        if ((key == keyUp) && cursorPosY > 3) cursorPosY--;
+        if ((key == keyRight) && cursorPosX < 77) cursorPosX++;
+        if ((key == keyDown) && cursorPosY < 65) cursorPosY++;
+        if ((key == keyLeft) && cursorPosX > 4) cursorPosX--;
+
+        if (key == keySpace){
+            setPixel(cursorPosX, cursorPosY, !getPixel(cursorPosX, cursorPosY));
+        }
+    }
+
+    unsigned char* drawAdr = (unsigned char*) (vidmem + 80 + 4);
+
+    sprintf(vidmem + 1840, "Press space to stop");
+    runGOT(drawAdr, 35, 21, keySpace);
     
 
 #if 0
@@ -124,9 +241,11 @@ int main(void){
 
 #endif
 
-    short endTime = *p_counter;
+    sprintf(vidmem + 1840, "Done! Press enter to run again");
 
-    sprintf(vidmem + 1840, "done in %d * 0.02 secs", (endTime - startTime));
+    while (getKey() != keyEnter);
 
-    return 0;
+    goto startRun;
+
+    //return 0;
 }
