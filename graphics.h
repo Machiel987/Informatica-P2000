@@ -41,8 +41,10 @@ static const unsigned char pxNumToChar[6] = {1,2,4,8,16,64};
 #define pxNumToChar5 ((unsigned char)64)
 
 //Function declarations
+void initializeScreen(void);
 void startGraphics(void);
 inline void setPixel(unsigned char x, unsigned char y, unsigned char wt);
+unsigned char getPixel(unsigned char x, unsigned char y);
 void drawLine(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char wt);
 //void drawLineColor(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char color);
 void horzLine(unsigned char x0, unsigned char x1, unsigned char y, unsigned char wt);
@@ -53,7 +55,7 @@ void rectangle(unsigned char x0, unsigned char y0, unsigned char x1, unsigned ch
 void rectangleColor(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char color);
 void fillRectangle(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char wt);
 void fillRectangleColor(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char color);
-void drawText(unsigned char x, unsigned char y, char* text, unsigned char textLen, unsigned char dblH, unsigned char color);
+void drawText(unsigned char x, unsigned char y, char* text, unsigned char dblH, unsigned char color);
 void circle(unsigned char xm, unsigned char ym, unsigned char r, unsigned char wt);
 void fillCircle(unsigned char xm, unsigned char ym, unsigned char r, unsigned char wt);
 struct sprite* mallocSprite(unsigned char width, unsigned char height);
