@@ -4,6 +4,7 @@
 
 #include "graphics.h"
 #include "games.h"
+#include "utils.h"
 
 #define keySpace 17
 #define keyEnter 52
@@ -31,14 +32,6 @@ unsigned char popCount[] = {
     3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
     4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8,
 };
-
-unsigned char getKey(void){
-    return *(unsigned char*) 0x600D;
-}
-
-unsigned int getTime(void){
-    return *(unsigned int*) 0x6010;
-}
 
 void drawBoard(unsigned char* boardStatus, unsigned char* adr, unsigned char w, unsigned char h){
     for (unsigned char j = 0; j < h; j++){ //j = y-coordinate
