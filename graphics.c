@@ -3,10 +3,7 @@
 #include <string.h>
 
 #include "graphics.h"
-
-//Functions for finding min and max (defined in macro for better performance)
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define MIN(a, b) ((a) > (b) ? (b) : (a))
+#include "utils.h"
 
 //Create reference to video memory
 __at (0x5000) char VIDMEM[];
@@ -19,20 +16,20 @@ unsigned char rollTableX[128]; //Table with flipped version of characters
 unsigned char rollTableYUp[128]; //Table with up-shifted version of charecters
 unsigned char rollTableYDn[128]; //Table with down-shifted version of characters
 
-unsigned char windowTLX = 0;
+unsigned char windowTLX = 2;
 unsigned char windowTLY = 0;
-unsigned char windowBRX = 39;
-unsigned char windowBRY = 23;
+unsigned char windowBRX = 79;
+unsigned char windowBRY = 71;
 
 void initializeScreen(void){
     for (unsigned int i = 0; i < 1919; i++) vidmem[i] = 32;
-    for (unsigned int i = 0; i <= 1840; i += 80) vidmem[i] = WHITEGFS;
+    for (unsigned int i = windowTLY / 3; i <= windowBRY / 3; i ++) vidmem[80*i + windowTLX / 2 - 1] = WHITEGFS;
 }
 
 //Fills all LUTs and initializes screen, must be called before attempting graphics routines
 void startGraphics(void){
-    for (unsigned char i = 0; i < 75; i++) yAdrLUT[i] = 0x5000 + 80 * (i/3) + 2 * (i%3);
     initializeScreen();
+    for (unsigned char i = 0; i < 75; i++) yAdrLUT[i] = 0x5000 + 80 * (i/3) + 2 * (i%3);
 
     //Deeply magical bit shi(f)t
     for (unsigned char i = 0; i < 128; i++){
@@ -60,8 +57,19 @@ void setWindow(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned
     windowBRY = BRY;
 }
 
+unsigned char* getWindow(void){
+    unsigned char out[4] = {windowTLX, windowTLY, windowBRX, windowBRY};
+    return out;
+}
+
 inline static unsigned char inRange(unsigned char x, unsigned char y){
-    return (x < 160 && y < 75);
+    return (x >= windowTLX && x <= windowBRX && y >= windowTLY && y <= windowBRY);
+}
+
+unsigned char inRangeInt(int x, int y){
+    if (x < 0 || x > 255 || y < 0 || y > 255) return false;
+
+    return inRange((unsigned char) x, (unsigned char) y);
 }
 
 //Set pixel without checking whether the pixel fits within the screen
@@ -105,7 +113,7 @@ inline static void unsafeSetPixelOff(unsigned char x, unsigned char y){
 //Sets a given pixel. Coordinates are in pixel, not character coordinates
 //wt = white (1 if pixel will be set to white, 0 if set to black)
 inline void setPixel(unsigned char x, unsigned char y, unsigned char wt){
-    if (x < 2 || x >= 160 || y >= 75) return;
+    if (!inRange(x, y)) return;
 
     unsafeSetPixel(x, y, wt);
 
@@ -150,51 +158,14 @@ void drawLine(unsigned char x0, unsigned char y0, unsigned char x1, unsigned cha
     return;
 }
 
-//Draws a line between 2 points, in the given color (use _COLOR_GFS)
-//TODO: Colors
-void drawLineColor(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char color){
-    signed char dx = abs(x1 - x0);
-    signed char sx = x0 < x1 ? 1 : -1;
-
-    signed char dy = -abs(y1 - y0);
-    signed char sy = y0 < y1 ? 1 : -1;
-
-    int error = dx + dy;
-    int e2 ;
-
-    unsigned char xUp;
-
-    * (unsigned char*) (yAdrLUT[y0] & 0xFFF0 + (x0 >> 1) - 1) == color;
-    * (unsigned char*) (yAdrLUT[y0] & 0xFFF0 + (x0 >> 1) + 1) == WHITEGFS;
-    * (unsigned char*) (yAdrLUT[y1] & 0xFFF0 + (x1 >> 1) - 1) == color;
-    * (unsigned char*) (yAdrLUT[y1] & 0xFFF0 + (x1 >> 1) + 1) == WHITEGFS;
-
-    while(1){
-        setPixel(x0, y0, true);
-        if (x0 == x1 && y0 == y1) break;
-        e2 = 2 * error;
-
-        if (e2 - dy >= 0){
-            error += dy;
-            x0 += sx;
-            xUp = true;
-        }
-
-        if (e2 - dx < 0){
-            error += dx;
-            y0 += sy;
-            xUp = false;
-        }
-    }
-
-    return;
-}
-
 //Draws or erases a horizontal line
 void horzLine(unsigned char x0, unsigned char x1, unsigned char y, unsigned char wt){
     unsigned char xmin = MIN(x0, x1);
+    xmin = MAX(xmin, windowTLX);
     unsigned char xmax = MAX(x0, x1);
-    if (xmax - 160 >= 0) xmax = 159;
+    xmax = MIN(xmax, windowBRX);
+
+    if (y < windowTLY || y > windowBRY) return;
 
     unsigned char* bgnAdr = (unsigned char*) ((yAdrLUT[y] & 0xFFF0) + ((xmin + 1) >> 1));
     unsigned char* endAdr = (unsigned char*) ((yAdrLUT[y] & 0xFFF0) + ((xmax + 1) >> 1));
@@ -252,14 +223,18 @@ void horzLine(unsigned char x0, unsigned char x1, unsigned char y, unsigned char
         }
     }
 
-    setPixel(x0, y, wt);
-    setPixel(x1, y, wt);
+    setPixel(xmin, y, wt);
+    setPixel(xmax, y, wt);
 }
 
 //Draws a horizontal line in the given color (use _COLOR_GFS)
 void horzLineColor(unsigned char x0, unsigned char x1, unsigned char y, unsigned char color){
     unsigned char xmin = MIN(x0, x1);
+    xmin = MAX(xmin, windowTLX) + 1;
     unsigned char xmax = MAX(x0, x1);
+    xmax = MIN(xmax, windowBRX) - 1;
+
+    if (y < windowTLY || y > windowBRY) return;
 
     * (unsigned char*) ((yAdrLUT[y] & 0xFFF0) + (xmin >> 1) - 1) = color;
     * (unsigned char*) ((yAdrLUT[y] & 0xFFF0) + (xmax >> 1) + 1) = WHITEGFS;
@@ -272,8 +247,11 @@ void horzLineColor(unsigned char x0, unsigned char x1, unsigned char y, unsigned
 //Draws or erases a vertical line
 void vertLine(unsigned char x, unsigned char y0, unsigned char y1, unsigned char wt){
     unsigned char ymin = MIN(y0, y1);
+    ymin = MAX(ymin, windowTLY);
     unsigned char ymax = MAX(y0, y1);
-    if (ymax - 72 >= 0) ymax = 71;
+    ymax = MIN(ymax, windowBRY);
+
+    if (x < windowTLX || x > windowBRX) return;
 
     unsigned char* bgnAdr = (unsigned char*) ((yAdrLUT[ymin + 2] & 0xFFF0) + (x >> 1));
     unsigned char* endAdr = (unsigned char*) ((yAdrLUT[ymax + 1] & 0xFFF0) + (x >> 1));
@@ -328,7 +306,11 @@ void vertLine(unsigned char x, unsigned char y0, unsigned char y1, unsigned char
 //Draws a vertical line in the given color (use _COLOR_GFS)
 void vertLineColor(unsigned char x, unsigned char y0, unsigned char y1, unsigned char color){
     unsigned char ymin = MIN(y0, y1);
+    ymin = MAX(ymin, windowTLY);
     unsigned char ymax = MAX(y0, y1);
+    ymax = MIN(ymax, windowBRY);
+
+    if (x < windowTLX - 1 || x > windowBRX) return;
 
     for (unsigned int i = (yAdrLUT[ymin] & 0xFFF0) + (x >> 1) - 1; i <= (yAdrLUT[ymax] & 0xFFF0) + (x >> 1) - 1; i += 80){
         * (unsigned char*) i = color;
@@ -368,9 +350,13 @@ void rectangleColor(unsigned char x0, unsigned char y0, unsigned char x1, unsign
 //Draws or erases a filled rectangle
 void fillRectangle(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char wt){
     unsigned char xmin = MIN(x0, x1);
+    xmin = MAX(xmin, windowTLX);
     unsigned char xmax = MAX(x0, x1);
+    xmax = MIN(xmax, windowBRX);
     unsigned char ymin = MIN(y0, y1);
+    ymin = MAX(ymin, windowTLY);
     unsigned char ymax = MAX(y0, y1);
+    ymax = MIN(ymax, windowBRY);
 
     unsigned char xminOl = xmin % 2;
     unsigned char xmaxOl = xmax % 2;
@@ -423,9 +409,13 @@ void fillRectangle(unsigned char x0, unsigned char y0, unsigned char x1, unsigne
 //Draws a filled rectangle in the given color (use _COLOR_GFS)
 void fillRectangleColor(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char color){
     unsigned char xmin = MIN(x0, x1);
+    xmin = MAX(xmin, windowTLX);
     unsigned char xmax = MAX(x0, x1);
+    xmax = MIN(xmax, windowBRX);
     unsigned char ymin = MIN(y0, y1);
+    ymin = MAX(ymin, windowTLY);
     unsigned char ymax = MAX(y0, y1);
+    ymax = MIN(ymax, windowBRY);
 
     for (unsigned int i = (yAdrLUT[ymin] & 0xFFF0) + (xmin >> 1) - 1; i <= (yAdrLUT[ymax] & 0xFFF0) + (xmin >> 1) - 1; i += 80)
         * (unsigned char*) i = color;
@@ -441,6 +431,8 @@ void fillRectangleColor(unsigned char x0, unsigned char y0, unsigned char x1, un
 void drawText(unsigned char x, unsigned char y, char* text, unsigned char dblH, unsigned char color){
     unsigned char* startAdr = (unsigned char*) ((yAdrLUT[y] & 0xFFF0) + (x >> 1));
     size_t textLen = strlen(text);
+
+    if ((!inRange(x, y)) || (!inRange(x + 2 * textLen, y))) return;
 
     if (dblH) {*(startAdr - 2) = color; *(startAdr - 1) = 0xD;}
     else *(startAdr - 1) = color;
@@ -460,16 +452,6 @@ void circleSU(unsigned char xm, unsigned char ym, unsigned char r, unsigned char
     unsigned char y = 0;
 
     while (x - y >= 0){
-        /*
-        setPixel(xm + x, ym + y, wt);
-        setPixel(xm - x, ym + y, wt);
-        setPixel(xm + x, ym - y, wt);
-        setPixel(xm - x, ym - y, wt);
-        setPixel(xm + y, ym + x, wt);
-        setPixel(xm - y, ym + x, wt);
-        setPixel(xm + y, ym - x, wt);
-        setPixel(xm - y, ym - x, wt);
-        */
         f(xm + x, ym + y, wt);
         f(xm - x, ym + y, wt);
         f(xm + x, ym - y, wt);
@@ -493,8 +475,10 @@ void circleSU(unsigned char xm, unsigned char ym, unsigned char r, unsigned char
 
 //Draws or erases a hollow circle using the midpoint circle algorithm
 void circle(unsigned char xm, unsigned char ym, unsigned char r, unsigned char wt){
-    if (inRange(xm - r, ym - r) && inRange(xm + r, ym + r)) circleSU(xm, ym, r, wt, unsafeSetPixel);
-    else circleSU(xm, ym, r, wt, setPixel);
+    if (inRange(xm - r, ym - r) && inRange(xm + r, ym + r))
+        circleSU(xm, ym, r, wt, unsafeSetPixel);
+    else
+        circleSU(xm, ym, r, wt, setPixel);
 }
 
 //Draws a circle in the given color usign the midpoint circle algorithm
@@ -556,6 +540,8 @@ void getSprite(struct sprite* buf, unsigned char x0, unsigned char y0){
 //Draws a previously saves sprite on the screen
 //Dimensions are in CHARACTER coordinates
 void drawSprite(struct sprite* buf, unsigned char x0, unsigned char y0){
+    if ((!inRange(x0, y0)) || (!inRange(x0 + buf->width, y0 + buf->height))) return;
+
     unsigned int count = 0;
 
     for (unsigned char j = y0; j < y0 + buf->height; j++){
@@ -569,103 +555,151 @@ void drawSprite(struct sprite* buf, unsigned char x0, unsigned char y0){
     return;
 }
 
-//Rolls a line from characters start to end one pixel to the left.
-void rollLeft(unsigned char ln, unsigned char start, unsigned char end){
-    unsigned char *adr = (unsigned char*) (vidmem + 80*ln + start);
-    unsigned char flip = rollTableX[*adr];
+//Rolls a line from characters start to end one pixel to the left, starting at adress adr
+//Note: Don't mess up the pointers, otherwise chaos will ensue
+void rollLeft(unsigned char* startAdr, unsigned char* endAdr){
+    unsigned char* currentAdr = startAdr;
+    unsigned char flip = rollTableX[*currentAdr];
 
-    for(unsigned char i = start; i <= end; i++){
-        adr++;
-        unsigned char nextFlip = rollTableX[*adr];
-        adr--;
-        *adr = (flip & 0b00110101) | (nextFlip & 0b01101010);
+    while (currentAdr <= endAdr){
+        currentAdr++;
+        unsigned char nextFlip = rollTableX[*currentAdr];
+        currentAdr--;
+        *currentAdr = (flip & 0b00110101) | (nextFlip & 0b01101010);
 
         flip = nextFlip;
-        adr++;
+        currentAdr++;
     }
 
-    adr--;
-    *adr &= 0b00110101;
+    currentAdr--;
+    *currentAdr &= 0b00110101;
 }
 
 
-//Rolls a line from characters start to end one pixel to the right.
-void rollRight(unsigned char ln, unsigned char start, unsigned char end){
-    unsigned char *adr = (unsigned char*) (vidmem + 80*ln + end);
-    unsigned char flip = rollTableX[*adr];
+//Rolls a line from characters start to end one pixel to the right, starting at adress adr
+//Note: Don't mess up the pointers, otherwise chaos will ensue
+void rollRight(unsigned char* startAdr, unsigned char* endAdr){
+    unsigned char* currentAdr = endAdr;
+    unsigned char flip = rollTableX[*currentAdr];
 
-    for(unsigned char i = end; i >= start; i--){
-        adr--;
-        unsigned char nextFlip = rollTableX[*adr];
-        adr++;
-        *adr = (flip & 0b01101010) | (nextFlip & 0b00110101);
+    while (currentAdr >= startAdr){
+        currentAdr--;
+        unsigned char nextFlip = rollTableX[*currentAdr];
+        currentAdr++;
+        *currentAdr = (flip & 0b01101010) | (nextFlip & 0b00110101);
 
         flip = nextFlip;
-        adr--;
+        currentAdr--;
     }
 
-    adr++;
-    *adr &= 0b01101010;
+    currentAdr++;
+    *currentAdr &= 0b01101010;
 }
 
-//Rolls a column from characters start to end one pixel up
-void rollUp(unsigned char col, unsigned char start, unsigned char end){
-    unsigned char *adr = (unsigned char*) (vidmem + 80*start + col);
-    unsigned char flip = rollTableYUp[*adr];
+//Rolls a column from characters start to end one pixel up, starting at adress adr
+//Note: Don't mess up the pointers, otherwise chaos will ensue
+void rollUp(unsigned char* startAdr, unsigned char* endAdr){
+    unsigned char* currentAdr = startAdr;
+    unsigned char flip = rollTableYUp[*currentAdr];
 
-    for (unsigned char i = start; i <= end; i++){
-        adr += 80;
-        unsigned char nextFlip = rollTableYUp[*adr];
-        adr -= 80;
-        *adr = (flip & 0xF) | (nextFlip & 0x70);
+    while (currentAdr <= endAdr){
+        currentAdr += 80;
+        unsigned char nextFlip = rollTableYUp[*currentAdr];
+        currentAdr -= 80;
+        *currentAdr = (flip & 0xF) | (nextFlip & 0x70);
         
         flip = nextFlip;
-        adr += 80;
+        currentAdr += 80;
     }
 
-    adr -= 80;
-    *adr &= 0x2F;
+    currentAdr -= 80;
+    *currentAdr &= 0x2F;
 }
 
-//Rolls a column from characters start to end one pixel down
-void rollDown(unsigned char col, unsigned char start, unsigned char end){
-    unsigned char *adr = (unsigned char*) (vidmem + 80*end + col);
-    unsigned char flip = rollTableYDn[*adr];
+//Rolls a column from characters start to end one pixel down, starting at adress adr
+//Note: Don't mess up the pointers, otherwise chaos will ensue
+void rollDown(unsigned char* startAdr, unsigned char* endAdr){
+    unsigned char* currentAdr = endAdr;
+    unsigned char flip = rollTableYDn[*currentAdr];
 
-    for (unsigned char i = end; i >= start; i--){
-        adr -= 80;
-        unsigned char nextFlip = rollTableYDn[*adr];
-        adr += 80;
-        *adr = (flip & 0x7C) | (nextFlip & 3);
+    while (currentAdr >= startAdr){
+        currentAdr -= 80;
+        unsigned char nextFlip = rollTableYDn[*currentAdr];
+        currentAdr += 80;
+        *currentAdr = (flip & 0x7C) | (nextFlip & 3);
         
         flip = nextFlip;
-        adr -= 80;
+        currentAdr -= 80;
     }
 
-    adr += 80;
-    *adr &= 0x7C;
+    currentAdr += 80;
+    *currentAdr &= 0x7C;
 }
 
-//Rolls drawing window to the left
-void rollWindowLeft(void){
-    for (unsigned char i = windowTLY; i < windowBRY; i++)
-        rollLeft(i, windowTLX, windowBRX);
+//Rolls a given area to the left
+void rollAreaLeft(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY){
+    if ((!inRange(TLX, TLY)) || (!inRange(BRX, BRY))) return;
+
+    unsigned char* startLineAdr = (unsigned char*) (yAdrLUT[TLY] & (0xFFF0));
+    unsigned char* startAdr = startLineAdr + (TLX >> 1);
+    unsigned char* endAdr = startLineAdr + (BRX >> 1);
+
+    unsigned char* endLineAdr = (unsigned char*) (yAdrLUT[BRY] & (0xFFF0)) + (TLX >> 1);
+
+    while (startAdr <= endLineAdr){
+        rollLeft(startAdr, endAdr);
+        startAdr += 80;
+        endAdr += 80;
+    }
 }
 
-//Rolls drawing window to the right
-void rollWindowRight(void){
-    for (unsigned char i = windowTLY; i < windowBRY; i++)
-        rollRight(i, windowTLX, windowBRX);
+//Rolls a given area to the right
+void rollAreaRight(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY){
+    if ((!inRange(TLX, TLY)) || (!inRange(BRX, BRY))) return;
+
+    unsigned char* startLineAdr = (unsigned char*) (yAdrLUT[TLY] & (0xFFF0));
+    unsigned char* startAdr = startLineAdr + (TLX >> 1);
+    unsigned char* endAdr = startLineAdr + (BRX >> 1);
+
+    unsigned char* endLineAdr = (unsigned char*) (yAdrLUT[BRY] & (0xFFF0)) + (TLX >> 1);
+
+    while (startAdr <= endLineAdr){
+        rollRight(startAdr, endAdr);
+        startAdr += 80;
+        endAdr += 80;
+    }
 }
 
-//Rolls drawing window up
-void rollWindowUp(void){
-    for (unsigned char i = windowTLX; i < windowBRX; i++)
-        rollUp(i, windowTLY, windowTLY);
+//Rolls a given area up
+void rollAreaUp(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY){
+    if ((!inRange(TLX, TLY)) || (!inRange(BRX, BRY))) return;
+
+    unsigned char* startColAdr = (unsigned char*) (yAdrLUT[TLY] & (0xFFF0));
+    unsigned char* startAdr = startColAdr + (TLX >> 1);
+    unsigned char* endAdr = (unsigned char*) (yAdrLUT[BRY] & (0xFFF0)) + (TLX >> 1);
+
+    unsigned char* endColAdr = startColAdr + (BRX >> 1);
+
+    while (startAdr <= endColAdr){
+        rollUp(startAdr, endAdr);
+        startAdr++;
+        endAdr++;
+    }
 }
 
-//Rolls drawing window down
-void rollWindowDown(void){
-    for (unsigned char i = windowTLX; i < windowBRX; i++)
-        rollDown(i, windowTLY, windowTLY);
+//Rolls a given area down
+void rollAreaDown(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY){
+    if ((!inRange(TLX, TLY)) || (!inRange(BRX, BRY))) return;
+
+    unsigned char* startColAdr = (unsigned char*) (yAdrLUT[TLY] & (0xFFF0));
+    unsigned char* startAdr = startColAdr + (TLX >> 1);
+    unsigned char* endAdr = (unsigned char*) (yAdrLUT[BRY] & (0xFFF0)) + (TLX >> 1);
+
+    unsigned char* endColAdr = startColAdr + (BRX >> 1);
+
+    while (startAdr <= endColAdr){
+        rollDown(startAdr, endAdr);
+        startAdr++;
+        endAdr++;
+    }
 }

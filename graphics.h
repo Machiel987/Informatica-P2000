@@ -43,6 +43,9 @@ static const unsigned char pxNumToChar[6] = {1,2,4,8,16,64};
 //Function declarations
 void initializeScreen(void);
 void startGraphics(void);
+void setWindow(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY);
+unsigned char* getWindow(void);
+unsigned char inRangeInt(int x, int y);
 inline void setPixel(unsigned char x, unsigned char y, unsigned char wt);
 unsigned char getPixel(unsigned char x, unsigned char y);
 void drawLine(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char wt);
@@ -61,11 +64,7 @@ void fillCircle(unsigned char xm, unsigned char ym, unsigned char r, unsigned ch
 struct sprite* mallocSprite(unsigned char width, unsigned char height);
 void freeSprite(struct sprite *s);
 void getSprite(struct sprite* buf, unsigned char x0, unsigned char y0);
-void rollLeft(unsigned char ln, unsigned char start, unsigned char end);
-void rollRight(unsigned char ln, unsigned char start, unsigned char end);
-void rollUp(unsigned char col, unsigned char start, unsigned char end);
-void rollDown(unsigned char col, unsigned char start, unsigned char end);
-void rollWindowLeft(void);
-void rollWindowRight(void);
-void rollWindowUp(void);
-void rollWindowDown(void);
+void rollAreaLeft(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY);
+void rollAreaRight(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY);
+void rollAreaUp(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY);
+void rollAreaDown(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY);
