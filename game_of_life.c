@@ -5,14 +5,7 @@
 #include "graphics.h"
 #include "games.h"
 #include "utils.h"
-
-#define keySpace 17
-#define keyEnter 52
-
-#define keyUp 2
-#define keyRight 23
-#define keyDown 21
-#define keyLeft 0
+#include "keyboard.h"
 
 unsigned char popCount[] = {
     0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
@@ -33,7 +26,7 @@ unsigned char popCount[] = {
     4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8,
 };
 
-void drawBoard(unsigned char* boardStatus, unsigned char* adr, unsigned char w, unsigned char h){
+void drawBoard(unsigned char* adr, unsigned char* boardStatus, unsigned char w, unsigned char h){
     for (unsigned char j = 0; j < h; j++){ //j = y-coordinate
         for (unsigned char i = 0; i < w; i++){ //i = x-coordinate
             adr[80*j + i] = boardStatus[w*j + i];
@@ -46,7 +39,7 @@ void evolveBoard(unsigned char* adr, unsigned char* out, unsigned char w, unsign
 
     for (unsigned char j = 0; j < h; j++){
 
-        if (getKey() == stopChar);
+        if (getKey() == stopChar) break;
 
         for (unsigned char i = 0; i < w; i++){
             register unsigned char circum = 0;
@@ -63,7 +56,7 @@ void evolveBoard(unsigned char* adr, unsigned char* out, unsigned char w, unsign
                 *out |= pxNumToChar1;
 
             circum =  popCount[adr[-1] & 0b01001010];
-            circum += popCount[adr[0] & 0b01011011];
+            circum += popCount[adr[0]  & 0b01011011];
             if (((val & pxNumToChar2) && (circum == 2)) || (circum == 3))
                 *out |= pxNumToChar2;
 
@@ -73,14 +66,14 @@ void evolveBoard(unsigned char* adr, unsigned char* out, unsigned char w, unsign
                 *out |= pxNumToChar3;
 
             circum =  popCount[(adr[-1] & 0b01001000) | (adr[79] & 0b00000010)];
-            circum += popCount[(adr[0] & 0b01001100) | (adr[80] & 0b00000011)];
+            circum += popCount[(adr[0]  & 0b01001100) | (adr[80] & 0b00000011)];
             if (((val & pxNumToChar4) && (circum == 2)) || (circum == 3))
                 *out |= pxNumToChar4;
 
             circum =  popCount[(adr[0] & 0b00011100) | (adr[80] & 0b00000011)];
             circum += popCount[(adr[1] & 0b00010100) | (adr[81] & 0b00000001)];
             if (((val & pxNumToChar[5]) && (circum == 2)) || (circum == 3))
-                *out |= pxNumToChar[5];
+                *out |= pxNumToChar[5]; //For some unknown reason, using the array for one pixel number is faster
 
             adr++;
             out++;
@@ -90,13 +83,13 @@ void evolveBoard(unsigned char* adr, unsigned char* out, unsigned char w, unsign
     }
 }
 
-void runGOT(char* adr, unsigned char w, unsigned char h, unsigned char stopChar){
+void runGOL(char* adr, unsigned char w, unsigned char h, unsigned char stopChar){
     unsigned char* newBoard = (unsigned char*) malloc(((unsigned) w) * ((unsigned) h));
     if (newBoard == NULL) return;
 
     while (getKey() != stopChar){
         evolveBoard(adr, newBoard, w, h, stopChar);
-        drawBoard(newBoard, adr, w, h);
+        drawBoard(adr, newBoard, w, h);
     }
 
     free(newBoard);
@@ -110,7 +103,7 @@ void drawIntroScene(void){
     drawText(30, 70, "Press Enter to continue", false, WHITETEXT);
 
     unsigned char* drawAdr = (unsigned char*) (vidmem + 3*80 + 2);
-    runGOT(drawAdr, 37, 19, keyEnter);
+    runGOL(drawAdr, 37, 19, keyEnter);
 
     while (getKey() != keyEnter);
 }
@@ -131,7 +124,7 @@ void drawInfoScene(void){
     drawText(6, 36, "-If a dead cell is surrounded by 3", false, WHITETEXT);
     drawText(8, 39, "alive cells, the cell comes to life.", false, WHITETEXT);
     drawText(6, 42, "-If a dead cell is surrounded by <3,", false, WHITETEXT);
-    drawText(8, 45, "or >3 alive cells, stays dead.", false, WHITETEXT);
+    drawText(8, 45, "or >3 alive cells, it stays dead.", false, WHITETEXT);
 
     drawText(30, 70, "Press Enter to continue", false, WHITETEXT);
 
@@ -158,6 +151,8 @@ void drawInstructionScene(void){
 }
 
 void gameOfLife(void){
+    setWindow(2, 0, 79, 70);
+
     startGraphics();
     drawIntroScene();
     initializeScreen();
@@ -172,16 +167,13 @@ void gameOfLife(void){
 
     while (getKey() == keyEnter);
 
-    //setPixel(30, 30, true);
-    //setPixel(31, 30, true);
-    //setPixel(31, 29, true);
-    //setPixel(32, 29, true);
-    //setPixel(32, 31, true);
+    setPixel(30, 30, true);
+    setPixel(31, 30, true);
+    setPixel(31, 29, true);
+    setPixel(32, 29, true);
+    setPixel(32, 31, true);
 
-    vertLine(2, 1, 67, true);
-    vertLine(79, 1, 67, true);
-    horzLine(2, 79, 1, true);
-    horzLine(2, 79, 67, true);
+    rectangle(2, 1, 79, 67, true);
 
     unsigned char key = 255, prevKey = 255;
     unsigned char cursorPosX = 4, cursorPosY = 3;
@@ -212,10 +204,14 @@ void gameOfLife(void){
         }
     }
 
-    unsigned char* drawAdr = (unsigned char*) (vidmem + 80 + 4);
+    unsigned char* drawAdr = (unsigned char*) (vidmem + 80 + 2);
 
+    sprintf(vidmem + 1840, "                    ");
     sprintf(vidmem + 1840, "Press space to stop");
-    runGOT(drawAdr, 35, 21, keySpace);
+
+    unsigned int startTime = getTime();
+
+    runGOL(drawAdr, 35, 21, keySpace);
 
     sprintf(vidmem + 1840, "Done! Press enter to run again");
 

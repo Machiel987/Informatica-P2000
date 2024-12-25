@@ -432,7 +432,7 @@ void drawText(unsigned char x, unsigned char y, char* text, unsigned char dblH, 
     unsigned char* startAdr = (unsigned char*) ((yAdrLUT[y] & 0xFFF0) + (x >> 1));
     size_t textLen = strlen(text);
 
-    if ((!inRange(x, y)) || (!inRange(x + 2 * textLen, y))) return;
+    if ((!inRange(x, y)) || (!inRange(x + 2 * textLen - 2, y))) return;
 
     if (dblH) {*(startAdr - 2) = color; *(startAdr - 1) = 0xD;}
     else *(startAdr - 1) = color;
