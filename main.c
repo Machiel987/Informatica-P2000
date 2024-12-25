@@ -8,6 +8,7 @@
 
 int main(void){
     gameOfLife();
+    //walker();
 
 #if 0
     struct sprite *testSprite = mallocSprite(5, 5);
