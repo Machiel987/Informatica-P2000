@@ -66,12 +66,6 @@ inline static unsigned char inRange(unsigned char x, unsigned char y){
     return (x >= windowTLX && x <= windowBRX && y >= windowTLY && y <= windowBRY);
 }
 
-unsigned char inRangeInt(int x, int y){
-    if (x < 0 || x > 255 || y < 0 || y > 255) return false;
-
-    return inRange((unsigned char) x, (unsigned char) y);
-}
-
 //Set pixel without checking whether the pixel fits within the screen
 //Use with extreme caution
 inline static void unsafeSetPixel(unsigned char x, unsigned char y, unsigned char wt){
@@ -158,15 +152,8 @@ void drawLine(unsigned char x0, unsigned char y0, unsigned char x1, unsigned cha
     return;
 }
 
-//Draws or erases a horizontal line
-void horzLine(unsigned char x0, unsigned char x1, unsigned char y, unsigned char wt){
-    unsigned char xmin = MIN(x0, x1);
-    xmin = MAX(xmin, windowTLX);
-    unsigned char xmax = MAX(x0, x1);
-    xmax = MIN(xmax, windowBRX);
-
-    if (y < windowTLY || y > windowBRY) return;
-
+//Draws or erases a horizontal line without window checking
+void unsafeHorzLine(unsigned char xmin, unsigned char xmax, unsigned char y, unsigned char wt){
     unsigned char* bgnAdr = (unsigned char*) ((yAdrLUT[y] & 0xFFF0) + ((xmin + 1) >> 1));
     unsigned char* endAdr = (unsigned char*) ((yAdrLUT[y] & 0xFFF0) + ((xmax + 1) >> 1));
 
@@ -227,6 +214,18 @@ void horzLine(unsigned char x0, unsigned char x1, unsigned char y, unsigned char
     setPixel(xmax, y, wt);
 }
 
+//Draws or erases a horizontal line
+void horzLine(unsigned char x0, unsigned char x1, unsigned char y, unsigned char wt){
+    if (y < windowTLY || y > windowBRY) return;
+
+    unsigned char xmin = MIN(x0, x1);
+    xmin = MAX(xmin, windowTLX);
+    unsigned char xmax = MAX(x0, x1);
+    xmax = MIN(xmax, windowBRX);
+
+    unsafeHorzLine(xmin, xmax, y, wt);
+}
+
 //Draws a horizontal line in the given color (use _COLOR_GFS)
 void horzLineColor(unsigned char x0, unsigned char x1, unsigned char y, unsigned char color){
     unsigned char xmin = MIN(x0, x1);
@@ -244,15 +243,8 @@ void horzLineColor(unsigned char x0, unsigned char x1, unsigned char y, unsigned
     }
 }
 
-//Draws or erases a vertical line
-void vertLine(unsigned char x, unsigned char y0, unsigned char y1, unsigned char wt){
-    unsigned char ymin = MIN(y0, y1);
-    ymin = MAX(ymin, windowTLY);
-    unsigned char ymax = MAX(y0, y1);
-    ymax = MIN(ymax, windowBRY);
-
-    if (x < windowTLX || x > windowBRX) return;
-
+//Draws or erases a vertical line without window checking
+void unsafeVertLine(unsigned char x, unsigned char ymin, unsigned char ymax, unsigned char wt){
     unsigned char* bgnAdr = (unsigned char*) ((yAdrLUT[ymin + 2] & 0xFFF0) + (x >> 1));
     unsigned char* endAdr = (unsigned char*) ((yAdrLUT[ymax + 1] & 0xFFF0) + (x >> 1));
 
@@ -296,11 +288,28 @@ void vertLine(unsigned char x, unsigned char y0, unsigned char y1, unsigned char
     }
 
     setPixel(x, ymin, wt);
-    setPixel(x, ymin + 1, wt);
     setPixel(x, ymax, wt);
-    setPixel(x, ymax - 1, wt);
+
+    if (ymin != ymax){
+        setPixel(x, ymin + 1, wt);
+        setPixel(x, ymax - 1, wt);
+    }
     
     return;
+}
+
+//Draws or erases a vertical line
+void vertLine(unsigned char x, unsigned char y0, unsigned char y1, unsigned char wt){
+    if (x < windowTLX || x > windowBRX) return;
+
+    unsigned char ymin = MIN(y0, y1);
+    ymin = MAX(ymin, windowTLY);
+    unsigned char ymax = MAX(y0, y1);
+    ymax = MIN(ymax, windowBRY);
+
+    if (ymax < ymin) return; //Really unusual, but this does occasionally happen due to weird clipping at the window
+
+    unsafeVertLine(x, ymin, ymax, wt);
 }
 
 //Draws a vertical line in the given color (use _COLOR_GFS)
@@ -555,8 +564,7 @@ void drawSprite(struct sprite* buf, unsigned char x0, unsigned char y0){
     return;
 }
 
-//Rolls a line from characters start to end one pixel to the left, starting at adress adr
-//Note: Don't mess up the pointers, otherwise chaos will ensue
+//Rolls a line from characters start to end one pixel to the left, going from startAdr to endAdr
 void rollLeft(unsigned char* startAdr, unsigned char* endAdr){
     unsigned char* currentAdr = startAdr;
     unsigned char flip = rollTableX[*currentAdr];
@@ -576,8 +584,7 @@ void rollLeft(unsigned char* startAdr, unsigned char* endAdr){
 }
 
 
-//Rolls a line from characters start to end one pixel to the right, starting at adress adr
-//Note: Don't mess up the pointers, otherwise chaos will ensue
+//Rolls a line from characters start to end one pixel to the right, going from startAdr to endAdr
 void rollRight(unsigned char* startAdr, unsigned char* endAdr){
     unsigned char* currentAdr = endAdr;
     unsigned char flip = rollTableX[*currentAdr];
@@ -596,8 +603,7 @@ void rollRight(unsigned char* startAdr, unsigned char* endAdr){
     *currentAdr &= 0b01101010;
 }
 
-//Rolls a column from characters start to end one pixel up, starting at adress adr
-//Note: Don't mess up the pointers, otherwise chaos will ensue
+//Rolls a column from characters start to end one pixel up, going from startAdr to endAdr
 void rollUp(unsigned char* startAdr, unsigned char* endAdr){
     unsigned char* currentAdr = startAdr;
     unsigned char flip = rollTableYUp[*currentAdr];
@@ -616,8 +622,7 @@ void rollUp(unsigned char* startAdr, unsigned char* endAdr){
     *currentAdr &= 0x2F;
 }
 
-//Rolls a column from characters start to end one pixel down, starting at adress adr
-//Note: Don't mess up the pointers, otherwise chaos will ensue
+//Rolls a column from characters start to end one pixel down, going from startAdr to endAdr
 void rollDown(unsigned char* startAdr, unsigned char* endAdr){
     unsigned char* currentAdr = endAdr;
     unsigned char flip = rollTableYDn[*currentAdr];
