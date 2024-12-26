@@ -7,6 +7,9 @@
 #include "utils.h"
 #include "keyboard.h"
 
+//Table including the "pop count" of a giving number (byte).
+//The pop count is defined as the number of 1s in a number
+//This has been hard-coded for better performance
 unsigned char popCount[] = {
     0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
     1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
@@ -26,6 +29,7 @@ unsigned char popCount[] = {
     4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8,
 };
 
+//Draws a given board state, where adr is the adress of the position on screen where the board will be drawn
 void drawBoard(unsigned char* adr, unsigned char* boardStatus, unsigned char w, unsigned char h){
     for (unsigned char j = 0; j < h; j++){ //j = y-coordinate
         for (unsigned char i = 0; i < w; i++){ //i = x-coordinate
@@ -34,6 +38,8 @@ void drawBoard(unsigned char* adr, unsigned char* boardStatus, unsigned char w, 
     }
 }
 
+#if 0
+//Legacy algorithm for computing next board state
 void evolveBoard(unsigned char* adr, unsigned char* out, unsigned char w, unsigned char h, unsigned char stopChar){
     memset(out, 0x20, w*h);
 
@@ -43,7 +49,7 @@ void evolveBoard(unsigned char* adr, unsigned char* out, unsigned char w, unsign
 
         for (unsigned char i = 0; i < w; i++){
             register unsigned char circum = 0;
-            unsigned char val = *adr;
+            register unsigned char val = *adr;
 
             circum =  popCount[(adr[-81] & 0b01000000) | (adr[-1] & 0b00001010)];
             circum += popCount[(adr[-80] & 0b01010000) | (adr[0] & 0b00001110)];
@@ -82,17 +88,139 @@ void evolveBoard(unsigned char* adr, unsigned char* out, unsigned char w, unsign
         adr += 80 - w;
     }
 }
+#endif
 
+//Calculates the rusult of applying the Game of Life rules to a certain byte at adress adr
+unsigned char runByte(unsigned char* adr){
+    unsigned char circum = 0;
+    unsigned char val = *adr;
+    unsigned char out = 0x20;
+
+    circum =  popCount[(adr[-81] & 0b01000000) | (adr[-1] & 0b00001010)];
+    circum += popCount[(adr[-80] & 0b01010000) | (adr[0] & 0b00001110)];
+    if (((val & pxNumToChar0) && (circum == 2)) || (circum == 3))
+        out |= pxNumToChar0;
+
+    circum =  popCount[(adr[-80] & 0b01010000) | (adr[0] & 0b00001101)];
+    circum += popCount[(adr[-79] & 0b00010000) | (adr[1] & 0b00000101)];
+    if (((val & pxNumToChar1) && (circum == 2)) || (circum == 3))
+        out |= pxNumToChar1;
+
+    circum =  popCount[adr[-1] & 0b01001010];
+    circum += popCount[adr[0]  & 0b01011011];
+    if (((val & pxNumToChar2) && (circum == 2)) || (circum == 3))
+        out |= pxNumToChar2;
+
+    circum =  popCount[adr[0] & 0b01010111];
+    circum += popCount[adr[1] & 0b00010101];
+    if (((val & pxNumToChar3) && (circum == 2)) || (circum == 3))
+        out |= pxNumToChar3;
+
+    circum =  popCount[(adr[-1] & 0b01001000) | (adr[79] & 0b00000010)];
+    circum += popCount[(adr[0]  & 0b01001100) | (adr[80] & 0b00000011)];
+    if (((val & pxNumToChar4) && (circum == 2)) || (circum == 3))
+        out |= pxNumToChar4;
+
+    circum =  popCount[(adr[0] & 0b00011100) | (adr[80] & 0b00000011)];
+    circum += popCount[(adr[1] & 0b00010100) | (adr[81] & 0b00000001)];
+    if (((val & pxNumToChar5) && (circum == 2)) || (circum == 3))
+        out |= pxNumToChar5;
+
+    return out;
+}
+
+//New function for computing the next board state. The current implemantation uses a "change list" to keep track of changing bytes
+//And only aplies runByte to bytes that have just changed, or neighbor a changing byte
+//This could be optimised further by using an algorithm which knows beforehand which bytes can be left unchecked, (i.e. using a quadtree)
+void evolveBoard2(unsigned char* adr, unsigned char* out, unsigned char* changeListIn, unsigned char* changeListOut, unsigned char w, unsigned char h){
+    for (unsigned char j = 0; j < h; j++){
+        for (unsigned char i = 0; i < w; i++){
+            if (*changeListIn == 0)
+                goto done;
+
+            unsigned char newByte = runByte(adr);
+            *out = newByte;
+
+            if (newByte == *adr)
+                goto done;
+
+            changeListOut[-w - 2 - 1] = 1;
+            changeListOut[-w - 2] = 1;
+            changeListOut[-w - 2 + 1] = 1;
+            changeListOut[-1] = 1;
+            changeListOut[0] = 1;
+            changeListOut[1] = 1;
+            changeListOut[w + 2 - 1] = 1;
+            changeListOut[w + 2] = 1;
+            changeListOut[w + 2 + 1] = 1;
+
+            done:
+            adr++;
+            out++;
+            changeListIn++;
+            changeListOut++;
+        }
+
+        changeListIn += 2;
+        changeListOut += 2;
+        adr += 80 - w;
+    }
+}
+
+#if 0
+//Legacy function for running Game of Life algorithm
 void runGOL(char* adr, unsigned char w, unsigned char h, unsigned char stopChar){
     unsigned char* newBoard = (unsigned char*) malloc(((unsigned) w) * ((unsigned) h));
     if (newBoard == NULL) return;
 
+    /*
     while (getKey() != stopChar){
         evolveBoard(adr, newBoard, w, h, stopChar);
         drawBoard(adr, newBoard, w, h);
     }
+    */
+
+    unsigned int startTime = getTime();
+
+    for (unsigned char i = 0; i < 10 && getKey() != stopChar; i++){
+        evolveBoard(adr, newBoard, w, h, stopChar);
+        drawBoard(adr, newBoard, w, h);
+    }
+
+    sprintf(vidmem + 1840, "Time (10): %d", getTime() - startTime);
 
     free(newBoard);
+}
+#endif
+
+//Run Game of Life on a specified adress.
+//Note that in at
+void runGOL(char* adr, unsigned char w, unsigned char h, unsigned char stopChar){
+    unsigned int sizeBoard = ((unsigned) w) * ((unsigned) h);
+    unsigned int sizeCList = ((unsigned) (w+2)) * ((unsigned) (h+2));
+
+    unsigned char* board = (unsigned char*) malloc(sizeBoard);
+    unsigned char* changeList = (unsigned char*) malloc(sizeCList);
+    unsigned char* newChangeList = (unsigned char*) malloc(sizeCList);
+
+    if (board == NULL || changeList == NULL || newChangeList == NULL) return;
+
+    memset(changeList, 1, sizeCList);
+    memset(newChangeList, 0, sizeCList);
+
+    while (getKey() != stopChar){
+        evolveBoard2(adr, board, changeList + w + 1, newChangeList + w + 1, w, h);
+        drawBoard(adr, board, w, h);
+
+        unsigned char* temp = changeList;
+        changeList = newChangeList;
+        newChangeList = temp;
+        memset(newChangeList, 0, sizeCList);
+    }
+
+    free(board);
+    free(changeList);
+    free(newChangeList);
 }
 
 void drawIntroScene(void){
@@ -150,6 +278,7 @@ void drawInstructionScene(void){
     while (getKey() != keyEnter);
 }
 
+//Main function for running the Game of Life
 void gameOfLife(void){
     setWindow(2, 0, 79, 70);
 
@@ -167,11 +296,11 @@ void gameOfLife(void){
 
     while (getKey() == keyEnter);
 
-    setPixel(30, 30, true);
-    setPixel(31, 30, true);
-    setPixel(31, 29, true);
-    setPixel(32, 29, true);
-    setPixel(32, 31, true);
+    setPixel(26, 26, true);
+    setPixel(27, 26, true);
+    setPixel(27, 25, true);
+    setPixel(28, 25, true);
+    setPixel(28, 27, true);
 
     rectangle(2, 1, 79, 67, true);
 
@@ -208,8 +337,6 @@ void gameOfLife(void){
 
     sprintf(vidmem + 1840, "                    ");
     sprintf(vidmem + 1840, "Press space to stop");
-
-    unsigned int startTime = getTime();
 
     runGOL(drawAdr, 35, 21, keySpace);
 
