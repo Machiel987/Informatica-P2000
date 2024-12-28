@@ -7,8 +7,8 @@
 #include "utils.h"
 
 int main(void){
-    //gameOfLife();
-    walker();
+    gameOfLife();
+    //walker();
 
 #if 0
     struct sprite *testSprite = mallocSprite(5, 5);
