@@ -4,7 +4,12 @@
 ; Interfacing
 ;--------------------------------------------------------
     EXTERN _popCount
+    EXTERN _evolve_w
+    EXTERN _evolve_h
+    EXTERN _evolve_changeListIn
+    EXTERN _evolve_changeListOut
     GLOBAL _runByte
+    GLOBAL _evolveBoard
 
 ;--------------------------------------------------------
 ; code
@@ -60,7 +65,8 @@ ENDM
 _runByte:
     PUSH IX
     PUSH HL
-    POP IX    
+    POP IX
+    EXX
 ;   unsigned char out = 0x20;
     LD B,0x20
     LD D,0
@@ -149,5 +155,92 @@ _start0:
 
 ;   return out;
     LD A,B
+    EXX
     POP IX
+    RET
+
+
+_evolveBoard:
+    PUSH IX
+
+    LD IX,(_evolve_changeListIn)
+    LD IY,(_evolve_changeListOut)
+
+    LD A,(_evolve_h)
+    LD B,A
+
+    OuterLoop:
+    PUSH BC
+    LD A,(_evolve_w)
+    LD B,A
+
+    InnerLoop:
+    LD A,(IX)
+    OR A,A
+    JR Z,Done
+
+    ; Preserves BC,DE,HL,IX
+    CALL _runByte
+
+    LD (DE),A
+
+    SUB A,(HL)
+    JR Z,Done
+
+    EXX
+    PUSH IY
+    POP HL
+
+    LD B,0
+    LD A,(_evolve_w)
+    LD C,A
+    INC C
+    INC C
+
+    LD (HL),1
+    INC HL
+    LD (HL),1
+    XOR A       ; Clear carry
+    SBC HL,BC
+    LD (HL),1
+    DEC HL
+    LD (HL),1
+    DEC HL
+    LD (HL),1
+    ADD HL,BC
+    LD (HL),1
+    ADD HL,BC
+    LD (HL),1
+    INC HL
+    LD (HL),1
+    INC HL
+    LD (HL),1
+    EXX
+
+    Done:
+    INC HL
+    INC DE
+    INC IX
+    INC IY
+
+    DJNZ InnerLoop
+
+    INC IX
+    INC IX
+    INC IY
+    INC IY
+
+    LD A,(_evolve_w)
+    LD B,A
+    LD A,80
+    SUB B
+    LD B,0
+    LD C,A
+    ADD HL,BC
+
+    POP BC
+    DJNZ OuterLoop
+
+    POP IX
+
     RET

@@ -139,10 +139,19 @@ unsigned char runByte(unsigned char* adr) FASTCALL {
 //New function for computing the next board state. The current implemantation uses a "change list" to keep track of changing bytes
 //And only aplies runByte to bytes that have just changed, or neighbor a changing byte
 //This could be optimised further by using an algorithm which knows beforehand which bytes can be left unchecked, (i.e. using a quadtree)
-void evolveBoard2(unsigned char* adr, unsigned char* out, unsigned char* changeListIn, unsigned char* changeListOut, unsigned char w, unsigned char h){
-    for (unsigned char j = 0; j < h; j++){
-        for (unsigned char i = 0; i < w; i++){
-            if (*changeListIn == 0)
+
+unsigned char evolve_w;
+unsigned char evolve_h;
+unsigned char* evolve_changeListIn;
+unsigned char* evolve_changeListOut;
+
+void evolveBoard(unsigned char* adr, unsigned char* out) __sdcccall(1);
+
+#if 0
+void evolveBoard(unsigned char* adr, unsigned char* out) __sdcccall(1) {
+    for (unsigned char j = 0; j < evolve_h; j++){
+        for (unsigned char i = 0; i < evolve_w; i++){
+            if (*evolve_changeListIn == 0)
                 goto done;
 
             unsigned char newByte = runByte(adr);
@@ -165,8 +174,8 @@ void evolveBoard2(unsigned char* adr, unsigned char* out, unsigned char* changeL
             if (change & 0b01000000) changeListOut[w + 2 + 1] = 1;//|= 0x01;
             */
 
-            register char *clo = changeListOut;
-            unsigned char wp2 = w + 2;
+            register char *clo = evolve_changeListOut;
+            unsigned char wp2 = evolve_w + 2;
 
             //The following code has been optimised for speed, not readability
             //To whoever is reading this 2-am code at a spectecular time of your life: My sincere apologies
@@ -184,15 +193,16 @@ void evolveBoard2(unsigned char* adr, unsigned char* out, unsigned char* changeL
             done:
             adr++;
             out++;
-            changeListIn++;
-            changeListOut++;
+            evolve_changeListIn++;
+            evolve_changeListOut++;
         }
 
-        changeListIn += 2;
-        changeListOut += 2;
-        adr += 80 - w;
+        evolve_changeListIn += 2;
+        evolve_changeListOut += 2;
+        adr += 80 - evolve_w;
     }
 }
+#endif
 
 #if 0
 //Legacy function for running Game of Life algorithm
@@ -235,10 +245,16 @@ void runGOL(char* adr, unsigned char w, unsigned char h, unsigned char stopChar)
     memset(changeList, 1/*0x5F*/, sizeCList);
     memset(newChangeList, 0, sizeCList);
 
+    evolve_w = w;
+    evolve_h = h;
+
     unsigned int startTime = getTime();
 
     for (unsigned char i = 0; i < 10 && getKey() != stopChar; i++){
-        evolveBoard2(adr, board, changeList + w + 1, newChangeList + w + 1, w, h);
+        evolve_changeListIn = changeList + w + 1;
+        evolve_changeListOut = newChangeList + w + 1;
+
+        evolveBoard(adr, board);
         drawBoard(adr, board, w, h);
 
         unsigned char* temp = changeList;
@@ -251,7 +267,10 @@ void runGOL(char* adr, unsigned char w, unsigned char h, unsigned char stopChar)
 
     /*
     while (getKey() != stopChar){
-        evolveBoard2(adr, board, changeList + w + 1, newChangeList + w + 1, w, h);
+        evolve_changeListIn = changeList + w + 1;
+        evolve_changeListOut = newChangeList + w + 1;
+
+        evolveBoard(adr, board);
         drawBoard(adr, board, w, h);
 
         unsigned char* temp = changeList;
