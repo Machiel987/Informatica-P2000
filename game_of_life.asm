@@ -8,7 +8,6 @@
     EXTERN _evolve_h
     EXTERN _evolve_changeListIn
     EXTERN _evolve_changeListOut
-    GLOBAL _runByte
     GLOBAL _evolveBoard
 
 ;--------------------------------------------------------
@@ -22,14 +21,15 @@
 ; Input : HL points to byte to process
 ; Output:  L new byte
 
-; Work  : IX points to byte to process
+; Work  : IY points to byte to process
+;         IX points to the change mask
 ;         HL _popCount
 ;          B out
 ;          C circum
 ;          D = 0
 
 MACRO HLpopcountA offsetA,bitsA
-    LD A,(IX+offsetA)
+    LD A,(IY+offsetA)
     AND A,bitsA
     LD E,A
     LD HL,_popCount
@@ -37,10 +37,10 @@ MACRO HLpopcountA offsetA,bitsA
 ENDM
 
 MACRO HLpopcountAB offsetA,bitsA,offsetB,bitsB
-    LD A,(IX+offsetA)
+    LD A,(IY+offsetA)
     AND A,bitsA
     LD E,A
-    LD A,(IX+offsetB)
+    LD A,(IY+offsetB)
     AND A,bitsB
     OR A,E
     LD E,A
@@ -54,7 +54,7 @@ MACRO GOLtest mybit,setlabel,nextlabel
     JR Z,setlabel
     CP A,2
     JR NZ,nextlabel
-    BIT mybit,(IX)
+    BIT mybit,(IY)
     JR Z,nextlabel
 setlabel:
 ;       out |= pxNumToCharN;
@@ -63,15 +63,21 @@ nextlabel:
 ENDM
 
 _runByte:
-    PUSH IX
+    PUSH IY
     PUSH HL
-    POP IX
+    POP IY
+
+;   unsigned char out = val & ~change;
+    LD A,(IX)
+    CPL
+    AND (HL)
+
     EXX
-;   unsigned char out = 0x20;
-    LD B,0x20
+    LD B,A
     LD D,0
 
-_start0:
+    BIT 0,(IX)
+    JR Z,_next0
 ;   circum =  popCount[(adr[-81] & 0b01000000) | (adr[-1] & 0b00001010)];
     HLpopcountAB -81,0b01000000,-1,0b00001010
     LD C,(HL)
@@ -83,7 +89,8 @@ _start0:
 ;       out |= pxNumToChar0;
     GOLtest 0,_set0,_next0
 
-
+    BIT 1,(IX)
+    JR Z,_next1
 ;   circum =  popCount[(adr[-80] & 0b01010000) | (adr[0] & 0b00001101)];
     HLpopcountAB -80,0b01010000,0,0b00001101
     LD C,(HL)
@@ -97,7 +104,8 @@ _start0:
 ;       out |= pxNumToChar1;
     GOLtest 1,_set1,_next1
 
-
+    BIT 2,(IX)
+    JR Z,_next2
 ;   circum =  popCount[adr[-1] & 0b01001010];
     HLpopcountA -1,0b01001010
     LD C,(HL)
@@ -111,7 +119,8 @@ _start0:
 ;       out |= pxNumToChar2;
     GOLtest 2,_set2,_next2
 
-
+    BIT 3,(IX)
+    JR Z,_next3
 ;   circum =  popCount[adr[0] & 0b01010111];
     HLpopcountA 0,0b01010111
     LD C,(HL)
@@ -125,7 +134,8 @@ _start0:
 ;       out |= pxNumToChar3;
     GOLtest 3,_set3,_next3
 
-
+    BIT 4,(IX)
+    JR Z,_next4
 ;   circum =  popCount[(adr[-1] & 0b01001000) | (adr[79] & 0b00000010)];
     HLpopcountAB -1,0b01001000,79,0b00000010
     LD C,(HL)
@@ -139,7 +149,8 @@ _start0:
 ;       out |= pxNumToChar4;
     GOLtest 4,_set4,_next4
 
-
+    BIT 6,(IX)
+    JR Z,_next6
 ;   circum =  popCount[(adr[0] & 0b00011100) | (adr[80] & 0b00000011)];
     HLpopcountAB 0,0b00011100,80,0b00000011
     LD C,(HL)
@@ -156,7 +167,7 @@ _start0:
 ;   return out;
     LD A,B
     EXX
-    POP IX
+    POP IY
     RET
 
 
@@ -296,3 +307,10 @@ Done:
     POP IX
 
     RET
+
+SECTION data_compiler_aligned
+
+ALIGN 256
+
+aligntest:
+    DB 0

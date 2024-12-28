@@ -94,8 +94,6 @@ void evolveBoard(unsigned char* adr, unsigned char* out, unsigned char w, unsign
 }
 #endif
 
-unsigned char runByte(unsigned char* adr) __sdcccall(1);
-
 #if 0
 unsigned char runByte(unsigned char* adr) FASTCALL {
     unsigned char circum = 0;
@@ -242,7 +240,7 @@ void runGOL(char* adr, unsigned char w, unsigned char h, unsigned char stopChar)
 
     if (board == NULL || changeList == NULL || newChangeList == NULL) return;
 
-    memset(changeList, 1/*0x5F*/, sizeCList);
+    memset(changeList, 0x5F, sizeCList);
     memset(newChangeList, 0, sizeCList);
 
     evolve_w = w;
