@@ -167,57 +167,92 @@ _evolveBoard:
     LD IY,(_evolve_changeListOut)
 
     LD A,(_evolve_h)
-    LD B,A
+    LD C,A
 
-    OuterLoop:
+OuterLoop:
     PUSH BC
     LD A,(_evolve_w)
     LD B,A
 
-    InnerLoop:
+InnerLoop:
     LD A,(IX)
     OR A,A
     JR Z,Done
 
-    ; Preserves BC,DE,HL,IX
+    ; Preserves every register, returns in A
     CALL _runByte
 
     LD (DE),A
 
-    SUB A,(HL)
+    CP A,(HL)
     JR Z,Done
+
+    XOR (HL)
 
     EXX
     PUSH IY
     POP HL
 
+    LD BC,(_evolve_w)
     LD B,0
-    LD A,(_evolve_w)
-    LD C,A
     INC C
     INC C
 
+    LD E,A      ; Store the previous A in E, so we can restore after AND
+
     LD (HL),1
     INC HL
+
+    AND 0b01001010
+    JR Z,Part2
     LD (HL),1
-    XOR A       ; Clear carry
+Part2:
+    LD A,E
+    OR A       ; Clear carry
     SBC HL,BC
+    AND 0b00000010
+    JR Z,Part3
     LD (HL),1
+Part3:
+    LD A,E
     DEC HL
+    AND 0b00000011
+    JR Z,Part4
     LD (HL),1
+Part4:
+    LD A,E
     DEC HL
+    AND 0b00000001
+    JR Z,Part5
     LD (HL),1
+Part5:
+    LD A,E
     ADD HL,BC
+    AND 0b00010101
+    JR Z,Part6
     LD (HL),1
+Part6:
+    LD A,E
     ADD HL,BC
+    AND 0b00010000
+    JR Z,Part7
     LD (HL),1
+Part7:
+    LD A,E
     INC HL
+    AND 0b01010000
+    JR Z,Part8
     LD (HL),1
+Part8:
+    LD A,E
     INC HL
+    AND 0b01000000
+    JR Z,End
     LD (HL),1
-    EXX
+End:
+    EXX         ; No need to restore A back to original value (E)
 
-    Done:
+Done:
     INC HL
     INC DE
     INC IX
@@ -239,7 +274,8 @@ _evolveBoard:
     ADD HL,BC
 
     POP BC
-    DJNZ OuterLoop
+    DEC C
+    JP NZ,OuterLoop      ; No DJNZ here, jump is too far
 
     POP IX
 
