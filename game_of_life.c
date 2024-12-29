@@ -14,7 +14,7 @@
 //Table including the "pop count" of a giving number (byte).
 //The pop count is defined as the number of 1s in a number
 //This has been hard-coded for better performance
-unsigned char popCount[] = {
+unsigned char popCountTable[] = {
     0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
     1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
     1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
@@ -33,14 +33,30 @@ unsigned char popCount[] = {
     4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8,
 };
 
+unsigned char *popCount;
+unsigned char popCountHigh;
+
+unsigned char evolve_w;
+unsigned char evolve_h;
+unsigned char* evolve_changeListIn;
+unsigned char* evolve_changeListOut;
+
 //Draws a given board state, where adr is the adress of the position on screen where the board will be drawn
-void drawBoard(unsigned char* adr, unsigned char* boardStatus, unsigned char w, unsigned char h){
-    for (unsigned char j = 0; j < h; j++){ //j = y-coordinate
-        for (unsigned char i = 0; i < w; i++){ //i = x-coordinate
-            adr[80*j + i] = boardStatus[w*j + i];
+void drawBoard(unsigned char* adr, unsigned char* boardStatus) __sdcccall(1);
+/*
+void drawBoard(unsigned char* boardStatus, unsigned char* adr){
+    for (unsigned char j = 0; j < evolve_h; j++){ //j = y-coordinate
+        for (unsigned char i = 0; i < evolve_w; i++){ //i = x-coordinate
+            //adr[80*j + i] = boardStatus[evolve_w*j + i];
+            *adr = *boardStatus;
+            adr++;
+            boardStatus++;
         }
+
+        adr += 80 - evolve_w;
     }
 }
+*/
 
 #if 0
 //Legacy algorithm for computing next board state
@@ -137,11 +153,6 @@ unsigned char runByte(unsigned char* adr) FASTCALL {
 //New function for computing the next board state. The current implemantation uses a "change list" to keep track of changing bytes
 //And only aplies runByte to bytes that have just changed, or neighbor a changing byte
 //This could be optimised further by using an algorithm which knows beforehand which bytes can be left unchecked, (i.e. using a quadtree)
-
-unsigned char evolve_w;
-unsigned char evolve_h;
-unsigned char* evolve_changeListIn;
-unsigned char* evolve_changeListOut;
 
 void evolveBoard(unsigned char* adr, unsigned char* out) __sdcccall(1);
 
@@ -240,7 +251,7 @@ void runGOL(char* adr, unsigned char w, unsigned char h, unsigned char stopChar)
 
     if (board == NULL || changeList == NULL || newChangeList == NULL) return;
 
-    memset(changeList, 0x5F, sizeCList);
+    memset(changeList, 1 /*0x5F*/, sizeCList);
     memset(newChangeList, 0, sizeCList);
 
     evolve_w = w;
@@ -248,12 +259,12 @@ void runGOL(char* adr, unsigned char w, unsigned char h, unsigned char stopChar)
 
     unsigned int startTime = getTime();
 
-    for (unsigned char i = 0; i < 10 && getKey() != stopChar; i++){
+    for (unsigned char i = 0; i < 60 && getKey() != stopChar; i++){
         evolve_changeListIn = changeList + w + 1;
         evolve_changeListOut = newChangeList + w + 1;
 
         evolveBoard(adr, board);
-        drawBoard(adr, board, w, h);
+        drawBoard(adr, board);
 
         unsigned char* temp = changeList;
         changeList = newChangeList;
@@ -340,6 +351,14 @@ void drawInstructionScene(void){
 
 //Main function for running the Game of Life
 void gameOfLife(void){
+
+    unsigned char* popCountAlloc = malloc(511);
+
+    popCountHigh = ((unsigned int)popCountAlloc + 255) / 256;
+    popCount = (unsigned char*) (256*popCountHigh);
+
+    memcpy(popCount, popCountTable, 256);
+
     setWindow(2, 0, 79, 70);
 
     startGraphics();
@@ -356,15 +375,15 @@ void gameOfLife(void){
 
     while (getKey() == keyEnter);
 
-    horzLine(10, 60, 35, true);
+    //horzLine(10, 60, 35, true);
 
-    /*
+    
     setPixel(26, 26, true);
     setPixel(27, 26, true);
     setPixel(27, 25, true);
     setPixel(28, 25, true);
     setPixel(28, 27, true);
-    */
+    
 
     rectangle(2, 1, 79, 67, true);
 
@@ -409,6 +428,8 @@ void gameOfLife(void){
     while (getKey() != keyEnter);
 
     goto startRun;
+
+    //free(popCountAlloc);
 
     //return 0;
 }
