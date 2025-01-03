@@ -216,7 +216,7 @@ InnerLoop:
     OR A,A
     JR Z,Done
 
-    ; Preserves every register, uses HL & IX, returns in A
+    ; Preserves every register, uses HL, returns in A
     CALL _runByte
 
     LD (DE),A
@@ -327,9 +327,8 @@ Done:
     INC IY
 
     LD A,(_evolve_w)
-    LD B,A
-    LD A,80
-    SUB B
+    SUB 81
+    CPL
     LD B,0
     LD C,A
     ADD HL,BC
@@ -341,10 +340,3 @@ Done:
     POP IX
 
     RET
-
-SECTION data_compiler_aligned
-
-ALIGN 256
-
-aligntest:
-    DB 0

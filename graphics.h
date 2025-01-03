@@ -32,7 +32,7 @@ struct sprite{
 //Constants
 extern char* vidmem;
 extern unsigned short yAdrLUT[75];
-static const unsigned char pxNumToChar[6] = {1,2,4,8,16,64};
+extern unsigned char pxNumToChar[];
 #define pxNumToChar0 ((unsigned char) 1)
 #define pxNumToChar1 ((unsigned char) 2)
 #define pxNumToChar2 ((unsigned char) 4)
@@ -65,7 +65,7 @@ void fillCircle(unsigned char xm, unsigned char ym, unsigned char r, unsigned ch
 struct sprite* mallocSprite(unsigned char width, unsigned char height);
 void freeSprite(struct sprite *s);
 void getSprite(struct sprite* buf, unsigned char x0, unsigned char y0);
-void rollAreaLeft(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY);
-void rollAreaRight(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY);
-void rollAreaUp(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY);
-void rollAreaDown(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY);
+void rollAreaLeft(void);
+void rollAreaRight(void);
+void rollAreaUp(void);
+void rollAreaDown(void);

@@ -16,6 +16,8 @@ unsigned char rollTableX[128]; //Table with flipped version of characters
 unsigned char rollTableYUp[128]; //Table with up-shifted version of charecters
 unsigned char rollTableYDn[128]; //Table with down-shifted version of characters
 
+unsigned char pxNumToChar[] = {1,2,4,8,16,64};
+
 unsigned char windowTLX = 2;
 unsigned char windowTLY = 0;
 unsigned char windowBRX = 79;
@@ -155,29 +157,30 @@ void drawLine(unsigned char x0, unsigned char y0, unsigned char x1, unsigned cha
 //Draws or erases a horizontal line without window checking
 void unsafeHorzLine(unsigned char xmin, unsigned char xmax, unsigned char y, unsigned char wt){
     unsigned char* bgnAdr = (unsigned char*) ((yAdrLUT[y] & 0xFFF0) + ((xmin + 1) >> 1));
-    unsigned char* endAdr = (unsigned char*) ((yAdrLUT[y] & 0xFFF0) + ((xmax + 1) >> 1));
+    //unsigned char* endAdr = (unsigned char*) ((yAdrLUT[y] & 0xFFF0) + ((xmax + 1) >> 1));
 
+    unsigned char maxI = ((xmax + 1) >> 1) - ((xmin + 1) >> 1);
     unsigned char* adr = bgnAdr;
 
     if (wt){
         switch (yAdrLUT[y] & 0xF)
         {
         case 0:
-            while (endAdr - adr > 0){
+            for (unsigned char i = 0; maxI - i > 0; i++){
                 *adr |= 0b00100011;
                 adr++;
             }
             break;
         
         case 2:
-            while (endAdr - adr > 0){
+            for (unsigned char i = 0; maxI - i > 0; i++){
                 *adr |= 0b00101100;
                 adr++;
             }
             break;
 
         case 4:
-            while (endAdr - adr > 0){
+            for (unsigned char i = 0; maxI - i > 0; i++){
                 *adr |= 0b01110000;
                 adr++;
             }
@@ -188,21 +191,21 @@ void unsafeHorzLine(unsigned char xmin, unsigned char xmax, unsigned char y, uns
         switch (yAdrLUT[y] & 0xF)
         {
         case 0:
-            while (endAdr - adr > 0){
+            for (unsigned char i = 0; maxI - i > 0; i++){
                 *adr &= ~0b00100011;
                 adr++;
             }
             break;
         
         case 2:
-            while (endAdr - adr > 0){
+            for (unsigned char i = 0; maxI - i > 0; i++){
                 *adr &= ~0b00101100;
                 adr++;
             }
             break;
 
         case 4:
-            while (endAdr - adr > 0){
+            for (unsigned char i = 0; maxI - i > 0; i++){
                 *adr &= ~0b01110000;
                 adr++;
             }
@@ -565,11 +568,13 @@ void drawSprite(struct sprite* buf, unsigned char x0, unsigned char y0){
 }
 
 //Rolls a line from characters start to end one pixel to the left, going from startAdr to endAdr
-void rollLeft(unsigned char* startAdr, unsigned char* endAdr){
+void rollLeft(unsigned char length, unsigned char* startAdr) __sdcccall(1);
+#if 0
+void rollLeft(unsigned char length, unsigned char* startAdr){
     unsigned char* currentAdr = startAdr;
     unsigned char flip = rollTableX[*currentAdr];
 
-    while (currentAdr <= endAdr){
+    for (unsigned char i = 0; i < length; i++){
         currentAdr++;
         unsigned char nextFlip = rollTableX[*currentAdr];
         currentAdr--;
@@ -582,14 +587,16 @@ void rollLeft(unsigned char* startAdr, unsigned char* endAdr){
     currentAdr--;
     *currentAdr &= 0b00110101;
 }
-
+#endif
 
 //Rolls a line from characters start to end one pixel to the right, going from startAdr to endAdr
-void rollRight(unsigned char* startAdr, unsigned char* endAdr){
+void rollRight(unsigned char length, unsigned char* endAdr) __sdcccall(1);
+#if 0
+void rollRight(unsigned char length, unsigned char* endAdr) __sdcccall(1) {
     unsigned char* currentAdr = endAdr;
     unsigned char flip = rollTableX[*currentAdr];
 
-    while (currentAdr >= startAdr){
+    for (unsigned char i = 0; i < length; i++){
         currentAdr--;
         unsigned char nextFlip = rollTableX[*currentAdr];
         currentAdr++;
@@ -602,13 +609,16 @@ void rollRight(unsigned char* startAdr, unsigned char* endAdr){
     currentAdr++;
     *currentAdr &= 0b01101010;
 }
+#endif
 
 //Rolls a column from characters start to end one pixel up, going from startAdr to endAdr
-void rollUp(unsigned char* startAdr, unsigned char* endAdr){
+void rollUp(unsigned char length, unsigned char* startAdr) __sdcccall(1);
+#if 0
+void rollUp(unsigned char length, unsigned char* startAdr){
     unsigned char* currentAdr = startAdr;
     unsigned char flip = rollTableYUp[*currentAdr];
 
-    while (currentAdr <= endAdr){
+    for (unsigned char i = 0; i < length; i++){
         currentAdr += 80;
         unsigned char nextFlip = rollTableYUp[*currentAdr];
         currentAdr -= 80;
@@ -621,13 +631,16 @@ void rollUp(unsigned char* startAdr, unsigned char* endAdr){
     currentAdr -= 80;
     *currentAdr &= 0x2F;
 }
+#endif
 
 //Rolls a column from characters start to end one pixel down, going from startAdr to endAdr
-void rollDown(unsigned char* startAdr, unsigned char* endAdr){
+void rollDown(unsigned char length, unsigned char* endAdr) __sdcccall(1);
+#if 0
+void rollDown(unsigned char length, unsigned char* endAdr){
     unsigned char* currentAdr = endAdr;
     unsigned char flip = rollTableYDn[*currentAdr];
 
-    while (currentAdr >= startAdr){
+    for (unsigned char i = 0; i < length; i++){
         currentAdr -= 80;
         unsigned char nextFlip = rollTableYDn[*currentAdr];
         currentAdr += 80;
@@ -640,71 +653,64 @@ void rollDown(unsigned char* startAdr, unsigned char* endAdr){
     currentAdr += 80;
     *currentAdr &= 0x7C;
 }
+#endif
 
 //Rolls a given area to the left
-void rollAreaLeft(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY){
-    if ((!inRange(TLX, TLY)) || (!inRange(BRX, BRY))) return;
+void rollAreaLeft(void){
+    if ((!inRange(windowTLX, windowTLY)) || (!inRange(windowBRX, windowBRY))) return;
 
-    unsigned char* startLineAdr = (unsigned char*) (yAdrLUT[TLY] & (0xFFF0));
-    unsigned char* startAdr = startLineAdr + (TLX >> 1);
-    unsigned char* endAdr = startLineAdr + (BRX >> 1);
+    unsigned char* startAdr = (unsigned char*) (yAdrLUT[windowTLY] & (0xFFF0)) + (windowTLX >> 1);
+    unsigned char length = (windowBRX - windowTLX + 1) >> 1;
 
-    unsigned char* endLineAdr = (unsigned char*) (yAdrLUT[BRY] & (0xFFF0)) + (TLX >> 1);
+    unsigned char* endLineAdr = (unsigned char*) (yAdrLUT[windowBRY] & (0xFFF0)) + (windowTLX >> 1);
 
     while (startAdr <= endLineAdr){
-        rollLeft(startAdr, endAdr);
+        rollLeft(length, startAdr);
         startAdr += 80;
-        endAdr += 80;
     }
 }
 
 //Rolls a given area to the right
-void rollAreaRight(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY){
-    if ((!inRange(TLX, TLY)) || (!inRange(BRX, BRY))) return;
+void rollAreaRight(void){
+    if ((!inRange(windowTLX, windowTLY)) || (!inRange(windowBRX, windowBRY))) return;
 
-    unsigned char* startLineAdr = (unsigned char*) (yAdrLUT[TLY] & (0xFFF0));
-    unsigned char* startAdr = startLineAdr + (TLX >> 1);
-    unsigned char* endAdr = startLineAdr + (BRX >> 1);
+    unsigned char* endAdr = (unsigned char*) (yAdrLUT[windowTLY] & (0xFFF0)) + (windowBRX >> 1);
+    unsigned char length = (windowBRX - windowTLX + 1) >> 1;
 
-    unsigned char* endLineAdr = (unsigned char*) (yAdrLUT[BRY] & (0xFFF0)) + (TLX >> 1);
+    unsigned char* endLineAdr = (unsigned char*) (yAdrLUT[windowBRY] & (0xFFF0)) + (windowBRX >> 1);
 
-    while (startAdr <= endLineAdr){
-        rollRight(startAdr, endAdr);
-        startAdr += 80;
+    while (endAdr <= endLineAdr){
+        rollRight(length, endAdr);
         endAdr += 80;
     }
 }
 
 //Rolls a given area up
-void rollAreaUp(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY){
-    if ((!inRange(TLX, TLY)) || (!inRange(BRX, BRY))) return;
+void rollAreaUp(void){
+    if ((!inRange(windowTLX, windowTLY)) || (!inRange(windowBRX, windowBRY))) return;
 
-    unsigned char* startColAdr = (unsigned char*) (yAdrLUT[TLY] & (0xFFF0));
-    unsigned char* startAdr = startColAdr + (TLX >> 1);
-    unsigned char* endAdr = (unsigned char*) (yAdrLUT[BRY] & (0xFFF0)) + (TLX >> 1);
+    unsigned char* startAdr = (unsigned char*) (yAdrLUT[windowTLY] & (0xFFF0)) + (windowTLX >> 1);;
+    unsigned char length = (windowBRY - windowTLY + 1) / 3;
 
-    unsigned char* endColAdr = startColAdr + (BRX >> 1);
+    unsigned char* endColAdr = (unsigned char*) (yAdrLUT[windowTLY] & (0xFFF0)) + (windowBRX >> 1);
 
     while (startAdr <= endColAdr){
-        rollUp(startAdr, endAdr);
+        rollUp(length, startAdr);
         startAdr++;
-        endAdr++;
     }
 }
 
 //Rolls a given area down
-void rollAreaDown(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY){
-    if ((!inRange(TLX, TLY)) || (!inRange(BRX, BRY))) return;
+void rollAreaDown(void){
+    if ((!inRange(windowTLX, windowTLY)) || (!inRange(windowBRX, windowBRY))) return;
 
-    unsigned char* startColAdr = (unsigned char*) (yAdrLUT[TLY] & (0xFFF0));
-    unsigned char* startAdr = startColAdr + (TLX >> 1);
-    unsigned char* endAdr = (unsigned char*) (yAdrLUT[BRY] & (0xFFF0)) + (TLX >> 1);
+    unsigned char* endAdr = (unsigned char*) (yAdrLUT[windowBRY] & (0xFFF0)) + (windowTLX >> 1);;
+    unsigned char length = (windowBRY - windowTLY + 1) / 3;
 
-    unsigned char* endColAdr = startColAdr + (BRX >> 1);
+    unsigned char* endColAdr = (unsigned char*) (yAdrLUT[windowBRY] & (0xFFF0)) + (windowBRX >> 1);
 
-    while (startAdr <= endColAdr){
-        rollDown(startAdr, endAdr);
-        startAdr++;
+    while (endAdr <= endColAdr){
+        rollDown(length, endAdr);
         endAdr++;
     }
 }
