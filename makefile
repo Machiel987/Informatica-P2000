@@ -1,7 +1,7 @@
-main.bin main.map main.rom: main.c graphics.h graphics.c games.h walker.c utils.c utils.h keyboard.c keyboard.h game_of_life.c game_of_life.asm
+main.bin main.map main.rom: main.c graphics.h graphics.asm graphics.c games.h utils.c utils.h keyboard.c keyboard.h walker.c
 	zcc \
 	+embedded -clib=sdcc_iy \
-	main.c graphics.c walker.c utils.c keyboard.c graphics.asm game_of_life.c game_of_life.asm \
+	main.c graphics.c utils.c keyboard.c graphics.asm walker.c \
 	-startup=2 \
 	-pragma-define:CRT_ORG_CODE=0x1000 \
 	-pragma-define:CRT_ORG_DATA=0x6500 \

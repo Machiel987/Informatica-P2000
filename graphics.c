@@ -251,6 +251,16 @@ void unsafeVertLine(unsigned char x, unsigned char ymin, unsigned char ymax, uns
     unsigned char* bgnAdr = (unsigned char*) ((yAdrLUT[ymin + 2] & 0xFFF0) + (x >> 1));
     unsigned char* endAdr = (unsigned char*) ((yAdrLUT[ymax + 1] & 0xFFF0) + (x >> 1));
 
+    setPixel(x, ymin, wt);
+    setPixel(x, ymax, wt);
+
+    if (ymin != ymax){
+        setPixel(x, ymin + 1, wt);
+        setPixel(x, ymax - 1, wt);
+    }
+
+    if (bgnAdr > endAdr) return;
+
     unsigned char* adr = bgnAdr;
 
     if(wt){
@@ -288,14 +298,6 @@ void unsafeVertLine(unsigned char x, unsigned char ymin, unsigned char ymax, uns
             }
             break;
         }
-    }
-
-    setPixel(x, ymin, wt);
-    setPixel(x, ymax, wt);
-
-    if (ymin != ymax){
-        setPixel(x, ymin + 1, wt);
-        setPixel(x, ymax - 1, wt);
     }
     
     return;
