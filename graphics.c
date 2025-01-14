@@ -85,6 +85,7 @@ inline static void unsafeSetPixel(unsigned char x, unsigned char y, unsigned cha
 }
 
 //Set pixel to ON, without screen check
+#if 0
 inline static void unsafeSetPixelOn(unsigned char x, unsigned char y){
     unsigned char* charAdr  = (unsigned char*) (yAdrLUT[y] & 0xFFF0) + (x >> 1);
     unsigned char  pixelNum = (x & 1) + (yAdrLUT[y] & 0xF);
@@ -95,8 +96,10 @@ inline static void unsafeSetPixelOn(unsigned char x, unsigned char y){
 
     return;
 }
+#endif
 
 //Set pixel to OFF, without screen check
+#if 0
 inline static void unsafeSetPixelOff(unsigned char x, unsigned char y){
     unsigned char* charAdr  = (unsigned char*) (yAdrLUT[y] & 0xFFF0) + (x >> 1);
     unsigned char  pixelNum = (x & 1) + (yAdrLUT[y] & 0xF);
@@ -105,6 +108,7 @@ inline static void unsafeSetPixelOff(unsigned char x, unsigned char y){
 
     *charAdr = newChar;
 }
+#endif
 
 //Sets a given pixel. Coordinates are in pixel, not character coordinates
 //wt = white (1 if pixel will be set to white, 0 if set to black)
@@ -125,6 +129,7 @@ unsigned char getPixel(unsigned char x, unsigned char y){
 
 //Draws or erases a line between any 2 screen coordinates.
 //Uses a generalized version of Bresenham's line algorithm
+#if 0
 void drawLine(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char wt){
     signed char dx = abs(x1 - x0);
     signed char sx = x0 < x1 ? 1 : -1;
@@ -153,6 +158,7 @@ void drawLine(unsigned char x0, unsigned char y0, unsigned char x1, unsigned cha
 
     return;
 }
+#endif
 
 //Draws or erases a horizontal line without window checking
 void unsafeHorzLine(unsigned char xmin, unsigned char xmax, unsigned char y, unsigned char wt){
@@ -192,21 +198,21 @@ void unsafeHorzLine(unsigned char xmin, unsigned char xmax, unsigned char y, uns
         {
         case 0:
             for (unsigned char i = 0; maxI - i > 0; i++){
-                *adr &= ~0b00100011;
+                *adr &= ~0b00000011;
                 adr++;
             }
             break;
         
         case 2:
             for (unsigned char i = 0; maxI - i > 0; i++){
-                *adr &= ~0b00101100;
+                *adr &= ~0b00001100;
                 adr++;
             }
             break;
 
         case 4:
             for (unsigned char i = 0; maxI - i > 0; i++){
-                *adr &= ~0b01110000;
+                *adr &= ~0b01010000;
                 adr++;
             }
             break;
@@ -230,6 +236,7 @@ void horzLine(unsigned char x0, unsigned char x1, unsigned char y, unsigned char
 }
 
 //Draws a horizontal line in the given color (use _COLOR_GFS)
+#if 0
 void horzLineColor(unsigned char x0, unsigned char x1, unsigned char y, unsigned char color){
     unsigned char xmin = MIN(x0, x1);
     xmin = MAX(xmin, windowTLX) + 1;
@@ -245,6 +252,7 @@ void horzLineColor(unsigned char x0, unsigned char x1, unsigned char y, unsigned
         setPixel(i, y, true);
     }
 }
+#endif
 
 //Draws or erases a vertical line without window checking
 void unsafeVertLine(unsigned char x, unsigned char ymin, unsigned char ymax, unsigned char wt){
@@ -318,6 +326,7 @@ void vertLine(unsigned char x, unsigned char y0, unsigned char y1, unsigned char
 }
 
 //Draws a vertical line in the given color (use _COLOR_GFS)
+#if 0
 void vertLineColor(unsigned char x, unsigned char y0, unsigned char y1, unsigned char color){
     unsigned char ymin = MIN(y0, y1);
     ymin = MAX(ymin, windowTLY);
@@ -335,6 +344,7 @@ void vertLineColor(unsigned char x, unsigned char y0, unsigned char y1, unsigned
     for (unsigned int i = (yAdrLUT[ymin] & 0xFFF0) + (x >> 1) + 1; i <= (yAdrLUT[ymax] & 0xFFF0) + (x >> 1) + 1; i += 80)
         * (unsigned char*) i = WHITEGFS;
 }
+#endif
 
 //Draws or erases a hollow rectangle
 void rectangle(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char wt){
@@ -345,6 +355,7 @@ void rectangle(unsigned char x0, unsigned char y0, unsigned char x1, unsigned ch
 }
 
 //Draws a hollow rectange in the given color (use _COLOR_GFS)
+#if 0
 void rectangleColor(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char color){
     unsigned char xmin = MIN(x0, x1);
     unsigned char xmax = MAX(x0, x1);
@@ -360,8 +371,10 @@ void rectangleColor(unsigned char x0, unsigned char y0, unsigned char x1, unsign
     for (unsigned int i = (yAdrLUT[ymin] & 0xFFF0) + (xmax >> 1) + 1; i <= (yAdrLUT[ymax] & 0xFFF0) + (xmax >> 1) + 1; i += 80)
         * (unsigned char*) i = WHITEGFS;
 }
+#endif
 
 //Draws or erases a filled rectangle
+#if 0
 void fillRectangle(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char wt){
     unsigned char xmin = MIN(x0, x1);
     xmin = MAX(xmin, windowTLX);
@@ -419,8 +432,10 @@ void fillRectangle(unsigned char x0, unsigned char y0, unsigned char x1, unsigne
         }
     }
 }
+#endif
 
 //Draws a filled rectangle in the given color (use _COLOR_GFS)
+#if 0
 void fillRectangleColor(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char color){
     unsigned char xmin = MIN(x0, x1);
     xmin = MAX(xmin, windowTLX);
@@ -439,6 +454,7 @@ void fillRectangleColor(unsigned char x0, unsigned char y0, unsigned char x1, un
     for (unsigned int i = (yAdrLUT[ymin] & 0xFFF0) + (xmax >> 1) + 1; i <= (yAdrLUT[ymax] & 0xFF0C) + (xmax >> 1) + 1; i += 80)
         * (unsigned char*) i = WHITEGFS;
 }
+#endif
 
 //Prints text in a given color to the screen. This text can be normal or double height
 //Due to the text being drawn on pixel coordinates, the text might not match the desired location perfectly
@@ -460,6 +476,7 @@ void drawText(unsigned char x, unsigned char y, char* text, unsigned char dblH, 
 }
 
 //Draws or erases a safe/unsafe circle depending on function pointer
+#if 0
 void circleSU(unsigned char xm, unsigned char ym, unsigned char r, unsigned char wt, void (*f)(unsigned char, unsigned char, unsigned char)){
     unsigned char t1 = r / 16;
     unsigned char x = r;
@@ -486,16 +503,20 @@ void circleSU(unsigned char xm, unsigned char ym, unsigned char r, unsigned char
 
     return;
 }
+#endif
 
 //Draws or erases a hollow circle using the midpoint circle algorithm
+#if 0
 void circle(unsigned char xm, unsigned char ym, unsigned char r, unsigned char wt){
     if (inRange(xm - r, ym - r) && inRange(xm + r, ym + r))
         circleSU(xm, ym, r, wt, unsafeSetPixel);
     else
         circleSU(xm, ym, r, wt, setPixel);
 }
+#endif
 
 //Draws a circle in the given color usign the midpoint circle algorithm
+#if 0
 void fillCircle(unsigned char xm, unsigned char ym, unsigned char r, unsigned char wt){
     unsigned char t1 = r / 16;
     unsigned char x = r;
@@ -517,9 +538,11 @@ void fillCircle(unsigned char xm, unsigned char ym, unsigned char r, unsigned ch
 
     return;
 }
+#endif
 
 //Reserve memory space for a sprite of determined dimensions
 //Dimensions are in CHARACTER coordinates
+#if 0
 struct sprite* mallocSprite(unsigned char width, unsigned char height){
     struct sprite *out = malloc(sizeof(struct sprite)) ;
     out->width = width;
@@ -528,15 +551,19 @@ struct sprite* mallocSprite(unsigned char width, unsigned char height){
 
     return out;
 }
+#endif
 
 //Frees the memory reserved for given sprite
+#if 0
 void freeSprite(struct sprite *s){
     free(s->chars) ;
     free(s) ;
 }
+#endif
 
 //Saves a sprite from the characters on screen in given location
 //Dimensions are in CHARACTER coordinates
+#if 0
 void getSprite(struct sprite* buf, unsigned char x0, unsigned char y0){
     unsigned int count = 0;
 
@@ -550,9 +577,11 @@ void getSprite(struct sprite* buf, unsigned char x0, unsigned char y0){
 
     return;
 }
+#endif
 
 //Draws a previously saves sprite on the screen
 //Dimensions are in CHARACTER coordinates
+#if 0
 void drawSprite(struct sprite* buf, unsigned char x0, unsigned char y0){
     if ((!inRange(x0, y0)) || (!inRange(x0 + buf->width, y0 + buf->height))) return;
 
@@ -568,6 +597,7 @@ void drawSprite(struct sprite* buf, unsigned char x0, unsigned char y0){
 
     return;
 }
+#endif
 
 //Rolls a line from characters start to end one pixel to the left, going from startAdr to endAdr
 void rollLeft(unsigned char length, unsigned char* startAdr) __sdcccall(1);
