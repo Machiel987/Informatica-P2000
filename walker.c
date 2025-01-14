@@ -20,18 +20,22 @@ struct vLine{
 };
 
 struct stairs{
-    unsigned int TLX, TLY, BRX, BRY;
-    unsigned int outXUp, outYUp, outXDown, outYDown;
-    unsigned char inputDir;
-    unsigned char floorUp, floorDown;
+    unsigned int TLX, TLY, BRX, BRY; //Area in which stair is active
+    unsigned int outXUp, outYUp, outXDown, outYDown; //Output position when taking the stairs up/down
+    unsigned char inputDir; //Direction of travel for stair to funciton (implemented using key values from keyBoard.h)
+    unsigned char floorUp, floorDown; //Booleans containing whether travel up/down is possible
 };
 
 //Co-ordinates of the entire window
-const unsigned char walkerTLX = 2, walkerTLY = 0, walkerBRX = 79, walkerBRY = 68;
+const static unsigned char windowTLX = 2, windowTLY = 0, windowBRX = 79, windowBRY = 68;
 //Co-ordinates of the rolling window
-const unsigned char rollTLX = 4, rollTLY = 3, rollBRX = 77, rollBRY = 65;
+const static unsigned char rollTLX = 4, rollTLY = 3, rollBRX = 77, rollBRY = 65;
 
-const unsigned char middleX = 41, middleY = 34;
+const unsigned char middleX = 41, middleY = 34; //Middle of the screen, used for drawing walking location
+
+//The following data compression technique is used: Tables with length < 256 are used for the possible x and y coordinates of a
+//horizontal/vertical line. A line struct has parameters that index into these tables to determine actual drawing positions.
+//This method saves approximately 30% in space.
 
 unsigned int xCoords[] = {
 52, 54, 56, 62, 72, 74, 76, 78, 80, 82, 84, 86, 88, 90, 92, 94, 96,
@@ -69,6 +73,8 @@ unsigned int yCoords[] = {
 303, 307, 308, 309, 313, 314, 315, 318, 319, 320, 321, 322, 325, 326,
 327, 328, 329, 330, 331, 333, 335, 337, 345, 346};
 
+//Tables containing horizontal/vertical lines.
+//Horizontal lines are sorted by y-coordinate and vertical lines by x-coordinate.
 struct hLine hLines0Inds[] = {
   {210, 212, 1}, {214, 241, 1}, {215, 225, 10}, {215, 225, 13}, {215, 
   225, 25}, {226, 227, 45}, {230, 240, 45}, {95, 123, 46}, {128, 130, 
@@ -220,6 +226,7 @@ struct vLine vLines2Inds[] = {
   54}, {143, 33, 54}, {144, 33, 54}, {145, 33, 54}, {146, 33, 
   54}, {147, 33, 54}, {148, 17, 22}, {149, 67, 71}, {157, 4, 107}};
 
+//Tables containing staircases
 struct stairs stairCases0[] = {
     {341, 219, 342, 243, 399, 151, 0, 0, keyRight, true, false},
     {46, 232, 47, 250, 58, 154, 0, 0, keyLeft, true, false},
@@ -244,26 +251,6 @@ unsigned char horizontalsLen, verticalsLen;
 struct stairs *stairCases;
 unsigned char stairsLen;
 
-void horzLineOffset(unsigned int x0, unsigned int x1, unsigned int xPos, unsigned int y, unsigned int yPos){
-    unsigned char startX = x0 - xPos;
-    unsigned char endX = x1 - xPos;
-    
-    if (x0 < xPos + rollTLX) startX = rollTLX;
-    if (x1 > xPos + rollBRX) endX = rollBRX;
-
-    horzLine(startX, endX, y - yPos, true);
-}
-
-void vertLineOffset(unsigned int x, unsigned int xPos, unsigned int y0, unsigned int y1, unsigned int yPos){
-    unsigned char startY = y0 - yPos;
-    unsigned char endY = y1 - yPos;
-
-    if (y0 < yPos + rollTLY) startY = rollTLY;
-    if (y1 > yPos + rollBRY) endY = rollBRY;
-
-    vertLine(x - xPos, startY, endY, true);
-}
-
 //Draws a horizontal line using the normal parameters, except using ints and including an "offset" per axis (position of the frame)
 void horzLineAtXY(unsigned char x0Index, unsigned char x1Index, unsigned int xPos, unsigned char yIndex, unsigned int yPos){
     unsigned int x0 = xCoords[x0Index];
@@ -274,7 +261,12 @@ void horzLineAtXY(unsigned char x0Index, unsigned char x1Index, unsigned int xPo
     if (x1 < xPos + rollTLX) return;
     if (y < yPos + rollTLY || y > yPos + rollBRY) return;
 
-    horzLineOffset(x0, x1, xPos, y, yPos);
+    if (x0 < xPos + rollTLX) x0 = rollTLX + xPos;
+    if (x1 > xPos + rollBRX) x1 = rollBRX + xPos;
+
+    horzLine(x0 - xPos, x1 - xPos, y - yPos, true);
+
+    //horzLineOffset(x0, x1, xPos, y, yPos);
 }
 
 //Draws a vertical line using the normal parameters, except using ints and including an "offset" per axis (position of the frame)
@@ -287,7 +279,12 @@ void vertLineAtXY(unsigned char xIndex, unsigned int xPos, unsigned char y0Index
     if (y0 > yPos + rollBRY) return;
     if (y1 < yPos + rollTLY) return;
 
-    vertLineOffset(x, xPos, y0, y1, yPos);
+    if (y0 < yPos + rollTLY) y0 = rollTLY + yPos;
+    if (y1 > yPos + rollBRY) y1 = rollBRY + yPos;
+
+    vertLine(x - xPos, y0 - yPos, y1 - yPos, true);
+
+    //vertLineOffset(x, xPos, y0, y1, yPos);
 }
 
 //Draws a horizontal line using the normal parameters, except using ints and including an "offset" on the x-axis (position of the frame)
@@ -298,8 +295,11 @@ void horzLineAtX(unsigned char x0Index, unsigned char x1Index, unsigned int xPos
     if (x0 > xPos + rollBRX) return;
     if (x1 < xPos + rollTLX) return;
     if (y < rollTLY || y > rollBRY) return;
+
+    if (x0 < xPos + rollTLX) x0 = rollTLX + xPos;
+    if (x1 > xPos + rollBRX) x1 = rollBRX + xPos;
     
-    horzLineOffset(x0, x1, xPos, y, 0);
+    horzLine(x0 - xPos, x1 - xPos, y, true);
 }
 
 //Draws a vertical line using the normal parameters, except using ints and including an "offset" on the y-axis (position of the frame)
@@ -311,7 +311,10 @@ void vertLineAtY(unsigned char x, unsigned char y0Index, unsigned char y1Index, 
     if (y0 > yPos + rollBRY) return;
     if (y1 < yPos + rollTLY) return;
 
-    vertLineOffset(x, 0, y0, y1, yPos);
+    if (y0 < yPos + rollTLY) y0 = rollTLY + yPos;
+    if (y1 > yPos + rollBRY) y1 = rollBRY + yPos;
+
+    vertLine(x, y0 - yPos, y1 - yPos, true);
 }
 
 //Sets a given pixel using the normal parameters, and including an offset on the x-axis
@@ -344,7 +347,7 @@ unsigned char handleFloorChange(unsigned char* floor, unsigned int* xPos, unsign
 
     if (startKey != currentStairs.inputDir) return 0;
 
-    fillCircle(39, 34, 20, false);
+    //fillCircle(middleX, middleY, 20, false);
     drawText(23, 30, "You reached a staircase", false, WHITETEXT);
     drawText(18, 36, "Press arrows to move up/down", false, WHITETEXT);
 
@@ -375,7 +378,7 @@ void walker(void){
 
     floorStart:
 
-    setWindow(walkerTLX, walkerTLY, walkerBRX, walkerBRY);
+    setWindow(windowTLX, windowTLY, windowBRX, windowBRY);
     startGraphics();
 
     switch (floor)
@@ -552,7 +555,7 @@ void walker(void){
             break;
         }
 
-        sprintf(vidmem + 1840, "(%d, %d)", posX, posY);
+        //sprintf(vidmem + 1840, "(%d, %d)", posX, posY);
 
         if (handleFloorChange(&floor, &posX, &posY)) goto floorStart;
 

@@ -5,26 +5,28 @@
 #include "graphics.h"
 #include "games.h"
 #include "utils.h"
+#include "keyboard.h"
 
 int main(void){
     //gameOfLife();
-    walker();
+    //walker();
+    tetris();
+
+    //*(unsigned char*) 0x5000 = 0b01111111;
+
+    //while(1);
 
 #if 0
-    struct sprite *testSprite = mallocSprite(5, 5);
+    unsigned char prevKey = 0;
 
-    getSprite(testSprite, 5, 5);
-    drawSprite(testSprite, 9, 5);
+    while (true){
+        while (getKey() == prevKey);
 
-    freeSprite(testSprite) ;
+        prevKey = getKey();
 
-#endif
-#if 0
-
-    for (unsigned char x = 2; x < 75; x++)
-        for (unsigned char y = 0; y < 60; y++)
-            setPixel(x, y, true);
-
+        sprintf(vidmem + 1840, "   ");
+        sprintf(vidmem + 1840, "%i", getKey());
+    }
 #endif
 
     return 0;
