@@ -7,6 +7,8 @@
 #include "utils.h"
 #include "keyboard.h"
 
+#define DEFAULTENTRANCE {0,0,0,0}
+
 struct hLine{
     unsigned char x0Index;
     unsigned char x1Index;
@@ -26,18 +28,30 @@ struct stairs{
     unsigned char floorUp, floorDown; //Booleans containing whether travel up/down is possible
 };
 
+enum classRoom{
+    UNDEF, MATH, PHYS, CHEM, GEOG, HIST, COMS, 
+    DUTC, ENGL, FREN, GERM, PE, BIO
+};
+
+struct classEntranceH{
+    unsigned int posX0, posX1;
+    unsigned int posY;
+    enum classRoom roomType;
+    signed char offSetY;
+};
+
 //Co-ordinates of the entire window
 const static unsigned char windowTLX = 2, windowTLY = 0, windowBRX = 79, windowBRY = 68;
 //Co-ordinates of the rolling window
 const static unsigned char rollTLX = 4, rollTLY = 3, rollBRX = 77, rollBRY = 65;
 
-const unsigned char middleX = 41, middleY = 34; //Middle of the screen, used for drawing walking location
+const static unsigned char middleX = 41, middleY = 34; //Middle of the screen, used for drawing walking location
 
 //The following data compression technique is used: Tables with length < 256 are used for the possible x and y coordinates of a
 //horizontal/vertical line. A line struct has parameters that index into these tables to determine actual drawing positions.
 //This method saves approximately 30% in space.
 
-unsigned int xCoords[] = {
+static unsigned int xCoords[] = {
 52, 54, 56, 62, 72, 74, 76, 78, 80, 82, 84, 86, 88, 90, 92, 94, 96,
 100, 102, 104, 106, 108, 110, 114, 116, 118, 120, 122, 126, 130, 138,
 140, 142, 144, 146, 148, 150, 154, 164, 166, 168, 170, 172, 174, 176,
@@ -57,7 +71,7 @@ unsigned int xCoords[] = {
 696, 698, 704, 706, 708, 718, 722, 724, 746, 756, 780, 794, 806, 822,
 824};
 
-unsigned int yCoords[] = {
+static unsigned int yCoords[] = {
 61, 62, 63, 66, 67, 68, 70, 75, 76, 80, 81, 82, 89, 98, 100, 103,
 105, 107, 108, 109, 110, 111, 112, 113, 114, 116, 117, 121, 122, 124,
 125, 126, 127, 128, 129, 131, 132, 135, 136, 138, 139, 140, 141, 144,
@@ -75,7 +89,7 @@ unsigned int yCoords[] = {
 
 //Tables containing horizontal/vertical lines.
 //Horizontal lines are sorted by y-coordinate and vertical lines by x-coordinate.
-struct hLine hLines0Inds[] = {
+static struct hLine hLines0Inds[] = {
   {210, 212, 1}, {214, 241, 1}, {215, 225, 10}, {215, 225, 13}, {215, 
   225, 25}, {226, 227, 45}, {230, 240, 45}, {95, 123, 46}, {128, 130, 
   46}, {134, 210, 46}, {215, 226, 74}, {0, 95, 78}, {95, 114, 
@@ -111,7 +125,7 @@ struct hLine hLines0Inds[] = {
   183}, {218, 220, 187}, {221, 228, 187}, {229, 231, 187}, {0, 99, 
   192}, {103, 107, 192}, {111, 153, 192}, {210, 241, 193}};
 
-struct vLine vLines0Inds[] = {
+static struct vLine vLines0Inds[] = {
   {0, 78, 137}, {0, 141, 193}, {4, 142, 156}, {5, 142, 156}, {6, 142, 
   156}, {7, 142, 156}, {8, 142, 156}, {9, 142, 156}, {10, 142, 
   156}, {11, 142, 156}, {17, 114, 148}, {17, 154, 156}, {22, 156, 
@@ -148,7 +162,7 @@ struct vLine vLines0Inds[] = {
   175, 192}, {237, 175, 193}, {241, 1, 11}, {241, 12, 61}, {241, 66, 
   125}, {241, 129, 193}};
 
-struct hLine hLines1Inds[] = {
+static struct hLine hLines1Inds[] = {
   {96, 211, 1}, {211, 225, 1}, {195, 226, 17}, {1, 96, 19}, {144, 154, 
   19}, {152, 161, 31}, {204, 211, 31}, {152, 154, 39}, {204, 225, 
   43}, {161, 162, 45}, {164, 179, 45}, {181, 185, 45}, {154, 161, 
@@ -170,7 +184,7 @@ struct hLine hLines1Inds[] = {
   109}, {33, 47, 109}, {50, 64, 109}, {155, 226, 117}, {1, 100, 
   139}, {100, 108, 139}, {108, 156, 139}};
 
-struct vLine vLines1Inds[] = {
+static struct vLine vLines1Inds[] = {
   {1, 19, 72}, {1, 72, 140}, {7, 64, 79}, {8, 64, 79}, {9, 64, 
   79}, {10, 64, 79}, {11, 64, 79}, {12, 64, 79}, {13, 64, 79}, {14, 
   49, 52}, {14, 58, 63}, {14, 64, 79}, {14, 92, 100}, {15, 106, 
@@ -195,7 +209,7 @@ struct vLine vLines1Inds[] = {
   43}, {216, 89, 116}, {220, 17, 43}, {220, 89, 116}, {223, 43, 
   63}, {226, 0, 118}};
 
-struct hLine hLines2Inds[] = {
+static struct hLine hLines2Inds[] = {
   {2, 98, 4}, {2, 157, 4}, {148, 157, 18}, {2, 15, 21}, {140, 143, 
   21}, {145, 148, 21}, {68, 87, 22}, {90, 105, 22}, {108, 117, 
   22}, {120, 137, 22}, {15, 16, 23}, {19, 31, 23}, {34, 48, 23}, {52, 
@@ -210,7 +224,7 @@ struct hLine hLines2Inds[] = {
   70}, {35, 48, 70}, {52, 66, 70}, {149, 157, 71}, {2, 15, 72}, {2, 
   157, 107}, {101, 110, 107}, {110, 157, 107}, {2, 101, 108}};
 
-struct vLine vLines2Inds[] = {
+static struct vLine vLines2Inds[] = {
   {2, 5, 41}, {2, 41, 108}, {8, 32, 46}, {9, 32, 46}, {10, 32, 
   46}, {11, 32, 46}, {12, 32, 46}, {13, 32, 46}, {14, 32, 46}, {15, 
   20, 24}, {15, 27, 32}, {15, 32, 46}, {16, 57, 62}, {16, 69, 
@@ -226,20 +240,45 @@ struct vLine vLines2Inds[] = {
   54}, {143, 33, 54}, {144, 33, 54}, {145, 33, 54}, {146, 33, 
   54}, {147, 33, 54}, {148, 17, 22}, {149, 67, 71}, {157, 4, 107}};
 
+static struct classEntranceH classRoomsH0[] = {
+    {456, 458, 218, CHEM, -1}, {456, 460, 173, CHEM, +1}, {426, 430, 159, 
+   PHYS, -1}, {472, 474, 159, PHYS, -1}, {532, 534, 159, CHEM, -1}, {544, 
+   548, 159, CHEM, -1}, {562, 564, 232, BIO, +1}, {502, 504, 232, BIO, +1},
+   {456, 460, 232, BIO, +1}, {656, 664, 280, PE, -1}
+};
+
+static struct classEntranceH classRoomsH1[] = {
+    {458, 464, 155, DUTC, +1}, {504, 508, 155, DUTC, +1}, {380, 384, 189, 
+   GERM, +1}, {368, 372, 189, GERM, +1}, {322, 328, 189, ENGL, +1}, {278, 
+   282, 189, ENGL, +1}, {232, 238, 189, ENGL, +1}, {188, 194, 190, 
+   ENGL, +1}, {54, 58, 119, DUTC, -1}, {98, 102, 118, DUTC, -1}, {142, 148, 
+   118, DUTC, -1}, {154, 160, 118, FREN, -1}, {200, 206, 118, FREN, -1}
+};
+
+static struct classEntranceH classRoomsH2[] = {
+    {390, 392, 77, MATH, -1}, {378, 382, 78, MATH, -1}, {332, 338, 78, 
+   MATH, -1}, {286, 290, 78, MATH, -1}, {238, 242, 78, MATH, -1}, {190, 196,
+    79, HIST, -1}, {146, 152, 79, MATH, -1}, {100, 104, 79, MATH, -1}, {56, 
+   62, 79, COMS, -1}, {146, 152, 143, HIST, +1}, {192, 198, 143, 
+   HIST, +1}, {238, 242, 142, MATH, +1}, {282, 290, 142, HIST, +1}, {332, 
+   338, 142, DUTC, +1}, {378, 382, 142, GEOG, +1}, {390, 396, 141, 
+   GEOG, +1}
+};
+
 //Tables containing staircases
-struct stairs stairCases0[] = {
+static struct stairs stairCases0[] = {
     {341, 219, 342, 243, 399, 151, 0, 0, keyRight, true, false},
     {46, 232, 47, 250, 58, 154, 0, 0, keyLeft, true, false},
     {570, 244, 584, 245, 579, 157, 0, 0, keyDown, true, false}
 };
 
-struct stairs stairCases1[] = {
+static struct stairs stairCases1[] = {
     {366, 137, 367, 168, 404, 110, 336, 232, keyLeft, true, true},
     {52, 138, 53, 156, 60, 101, 54, 243, keyLeft, true, true},
     {572, 161, 586, 162, 0, 0, 578, 240, keyDown, false, true}
 };
 
-struct stairs stairCases2[] = {
+static struct stairs stairCases2[] = {
     {398, 95, 399, 124, 0, 0, 399, 151, keyLeft, false, true},
     {54, 94, 55, 112, 0, 0, 58, 154, keyLeft, false, true}
 };
@@ -250,6 +289,9 @@ unsigned char horizontalsLen, verticalsLen;
 
 struct stairs *stairCases;
 unsigned char stairsLen;
+
+struct classEntranceH* entrancesH;
+unsigned char entrancesHLen;
 
 //Draws a horizontal line using the normal parameters, except using ints and including an "offset" per axis (position of the frame)
 void horzLineAtXY(unsigned char x0Index, unsigned char x1Index, unsigned int xPos, unsigned char yIndex, unsigned int yPos){
@@ -347,7 +389,6 @@ unsigned char handleFloorChange(unsigned char* floor, unsigned int* xPos, unsign
 
     if (startKey != currentStairs.inputDir) return 0;
 
-    //fillCircle(middleX, middleY, 20, false);
     drawText(23, 30, "You reached a staircase", false, WHITETEXT);
     drawText(18, 36, "Press arrows to move up/down", false, WHITETEXT);
 
@@ -374,13 +415,13 @@ unsigned char handleFloorChange(unsigned char* floor, unsigned int* xPos, unsign
 void walker(void){
     unsigned char floor = 0;
     unsigned int posX = 284, posY = 320;
-    //unsigned int posX = 120, posY = 120;
 
-    floorStart:
+    floorStart: //When there is a floor change, code begins here
 
     setWindow(windowTLX, windowTLY, windowBRX, windowBRY);
     startGraphics();
 
+    //Update lines depending on the floor level
     switch (floor)
     {
     case 0:
@@ -391,6 +432,9 @@ void walker(void){
 
         stairCases = stairCases0;
         stairsLen = sizeof(stairCases0) / sizeof(struct stairs);
+
+        entrancesH = classRoomsH0;
+        entrancesHLen = sizeof (classRoomsH0) / sizeof (struct classEntranceH);
         break;
     
     case 1:
@@ -402,6 +446,9 @@ void walker(void){
 
         stairCases = stairCases1;
         stairsLen = sizeof(stairCases1) / sizeof(struct stairs);
+
+        entrancesH = classRoomsH1;
+        entrancesHLen = sizeof (classRoomsH1) / sizeof (struct classEntranceH);
         break;
     
     case 2:
@@ -413,22 +460,28 @@ void walker(void){
 
         stairCases = stairCases2;
         stairsLen = sizeof(stairCases2) / sizeof(struct stairs);
+
+        entrancesH = classRoomsH2;
+        entrancesHLen = sizeof (classRoomsH2) / sizeof (struct classEntranceH);
         break;
     }
 
     rectangle(2, 1, 79, 67, true);
+    setWindow(rollTLX, rollTLY, rollBRX, rollBRY);
 
+    //Pointers indicating the start and end of the arrays
     struct hLine* topEnd = horizontals - 1;
     struct hLine* botEnd = horizontals + horizontalsLen;
     struct vLine* leftEnd = verticals - 1;
     struct vLine* rightEnd = verticals + verticalsLen;
     
+    //Pointers indicating the current position of the screen relative to the lists
+    //These pointers are only updated when necessary and only lines between these pointers need to be checked for drawing
+    //This method is 10-15x faster than checking all lines
     struct hLine* topHs = topEnd + 1;
     struct hLine* botHs = botEnd - 1;
     struct vLine* leftVs = leftEnd + 1;
     struct vLine* rightVs = rightEnd - 1;
-
-    setWindow(rollTLX, rollTLY, rollBRX, rollBRY);
 
     for (unsigned char i = 0; i < horizontalsLen; i++){
         horzLineAtXY(horizontals[i].x0Index, horizontals[i].x1Index, posX, horizontals[i].yIndex, posY);
@@ -438,8 +491,7 @@ void walker(void){
         vertLineAtXY(verticals[i].xIndex, posX, verticals[i].y0Index, verticals[i].y1Index, posY);
     }
 
-    //sprintf(vidmem + 1840, "%d", yCoords[35]);
-
+    //Update the pointers
     while (yCoords[topHs->yIndex] < posY + rollTLY) topHs++;
     while (yCoords[botHs->yIndex] > posY + rollBRY) botHs--;
     while (xCoords[leftVs->xIndex] < posX + rollTLX) leftVs++;
@@ -449,6 +501,7 @@ void walker(void){
 
     unsigned char key = 255, prevKey = 255;
 
+    //TODO: cleanup switch
     while (true){
         unsigned int startTime = getTime();
 
@@ -555,9 +608,27 @@ void walker(void){
             break;
         }
 
-        //sprintf(vidmem + 1840, "(%d, %d)", posX, posY);
+        sprintf(vidmem + 1840, "                  ");
+        sprintf(vidmem + 1840, "(%i, %i)", posX, posY);
 
         if (handleFloorChange(&floor, &posX, &posY)) goto floorStart;
+
+        struct classEntranceH entrance = DEFAULTENTRANCE;
+
+        for (unsigned char i = 0; i < entrancesHLen; i++){
+            if ((posY == entrancesH[i].posY) && (posX >= entrancesH[i].posX0) && (posX <= entrancesH[i].posX1)){
+                memcpy(&entrance, entrancesH + i, sizeof (struct classEntranceH));
+            }
+        }
+
+        switch (entrance.roomType)
+        {
+        case MATH:
+            tetris();
+            posY -= entrance.offSetY;
+            goto floorStart;
+            break;
+        }
 
         key = getKey();
 

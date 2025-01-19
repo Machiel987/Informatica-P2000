@@ -294,14 +294,14 @@ void unsafeVertLine(unsigned char x, unsigned char ymin, unsigned char ymax, uns
         {
         case 0:
             while (endAdr - adr > 0){
-                *adr &= ~0b00110101;
+                *adr &= ~0b00010101;
                 adr += 80;
             }
             break;
         
         case 1:
             while (endAdr - adr > 0){
-                *adr &= ~0b01101010;
+                *adr &= ~0b01001010;
                 adr += 80;
             }
             break;
@@ -374,7 +374,7 @@ void rectangleColor(unsigned char x0, unsigned char y0, unsigned char x1, unsign
 #endif
 
 //Draws or erases a filled rectangle
-#if 0
+#if 1
 void fillRectangle(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char wt){
     unsigned char xmin = MIN(x0, x1);
     xmin = MAX(xmin, windowTLX);
@@ -425,7 +425,7 @@ void fillRectangle(unsigned char x0, unsigned char y0, unsigned char x1, unsigne
     }
 
     for (unsigned int yAdr = yAdrLUT[ymin + 2] & 0xFFF0; yAdr <= (yAdrLUT[ymax - 2] & 0xFFF0); yAdr += 80){
-        for (unsigned int xAdr = (1 + xmin) >> 1; xAdr < (xmax + 1) >> 1; xAdr++){
+        for (unsigned int xAdr = ((1 + xmin) >> 1); xAdr < ((xmax + 1) >> 1); xAdr++){
             unsigned char* p_char = (unsigned char*) (yAdr + xAdr);
             if (wt) *p_char = 127;
             else *p_char = 32;

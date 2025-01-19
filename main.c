@@ -9,8 +9,10 @@
 
 int main(void){
     //gameOfLife();
-    //walker();
-    tetris();
+    walker();
+    //tetris();
+    //reactionTest();
+    //gameOfUr();
 
     //*(unsigned char*) 0x5000 = 0b01111111;
 

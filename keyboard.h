@@ -14,4 +14,6 @@
 #define keyS 11
 #define keyZ 10
 
+#define key0 45
+
 unsigned char getKey(void);
