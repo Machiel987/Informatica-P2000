@@ -214,8 +214,41 @@ void playAI(struct boardState* board, unsigned char dice){
     *board = bestMove;
 }
 
+static void drawInfoScreen(void){
+    drawText(10, 0, "The Royal Game of Ur", true, WHITETEXT);
+
+    drawText(4, 9,  "As an ancient 2-player race game, the", false, WHITETEXT);
+    drawText(4, 12, "Royal Game of Ur is one of the oldest", false, WHITETEXT);
+    drawText(4, 15, "games ever discovered, dating back to", false, WHITETEXT);
+    drawText(4, 18, "around 3000 BC. It originated in", false, WHITETEXT);
+    drawText(4, 24, "ancient Mesopotamia and remained ", false, WHITETEXT);
+    drawText(4, 27, "popular in certain parts of the world", false, WHITETEXT);
+    drawText(4, 30, "until the 1950s. Each player is given", false, WHITETEXT);
+    drawText(4, 33, "7 stones, with the goal of moving all", false, WHITETEXT);
+    drawText(4, 36, "to the end of the board. Your stones ", false, WHITETEXT);
+    drawText(4, 39, "move clockwise while the computers", false, WHITETEXT);
+    drawText(4, 42, "stones move counter-clockwise. Dice ", false, WHITETEXT);
+    drawText(4, 45, "are rolled every move and a single ", false, WHITETEXT);
+    drawText(4, 48, "stone may be moved that number of", false, WHITETEXT);
+    drawText(4, 51, "squares. Stones from the opponent", false, WHITETEXT);
+    drawText(4, 54, "may be captured, but not your own.", false, WHITETEXT);
+    drawText(6, 57, "-Use up & down arrows to cycle", false, WHITETEXT);
+    drawText(8, 60, "through options", false, WHITETEXT);
+    drawText(6, 63, "-Press Enter to play that option", false, WHITETEXT);
+
+    drawText(30, 70, "Press Enter to continue", false, WHITETEXT);
+
+    while (getKey() != keyEnter);
+}
+
 void gameOfUr(void){
     setWindow(windowTLX, windowTLY, windowBRX, windowBRY);
+    startGraphics();
+
+    start:
+
+    drawInfoScreen();
+
     startGraphics();
 
     struct boardState board = {7, 0, 7, 0, 1, 1};
@@ -270,9 +303,16 @@ void gameOfUr(void){
     }
 
     if (!board.end0)
-        drawText(30, 30, "You won!", true, GREENTEXT);
-    else
         drawText(30, 30, "You lost!", true, REDTEXT);
+    else
+        drawText(30, 30, "You won!", true, GREENTEXT);
 
-    while (true);
+    drawText(30, 67, "Press Space to restart", false, WHITETEXT);
+    drawText(30, 70, "Press 0 to return to LCL", false, WHITETEXT);
+
+    while (getKey() != key0 && getKey() != keySpace);
+
+    if (getKey() == keySpace) goto start;
+
+    return;
 }

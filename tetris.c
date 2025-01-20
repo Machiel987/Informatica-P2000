@@ -151,9 +151,37 @@ void clearBlock(struct block block, unsigned char x, unsigned char y){
     drawClearBlock(block, x, y, false);
 }
 
+static void drawInfoScreen(void){
+    drawText(10, 0, "Tetris", true, WHITETEXT);
+
+    drawText(4, 9,  "This game invented by Russian ", false, WHITETEXT);
+    drawText(4, 12, "Alexey Pajitnov in 1985 has developed", false, WHITETEXT);
+    drawText(4, 15, "as one of the most recognizable", false, WHITETEXT);
+    drawText(4, 18, "computer games ever devised and also", false, WHITETEXT);
+    drawText(4, 24, "one of the best selling video game", false, WHITETEXT);
+    drawText(4, 27, "franchises of all time. The concept", false, WHITETEXT);
+    drawText(4, 30, "of a collections of blocks, calles a", false, WHITETEXT);
+    drawText(4, 33, "tetrominoe, also turned out to be a", false, WHITETEXT);
+    drawText(4, 36, "valuable concept in mathematics.", false, WHITETEXT);
+    drawText(4, 39, "You will now play this iconic game:", false, WHITETEXT);
+    drawText(6, 42, "-Use left & right arrows to move", false, WHITETEXT);
+    drawText(6, 45, "-Use A & S keys to rotate a piece", false, WHITETEXT);
+    drawText(6, 48, "-Use space key to speed up a piece", false, WHITETEXT);
+    drawText(6, 51, "-Use Z key to put a piece on hold", false, WHITETEXT);
+
+    drawText(30, 70, "Press Enter to continue", false, WHITETEXT);
+
+    while (getKey() != keyEnter);
+}
+
 //Main function
 void tetris(void){
     setWindow(windowTLX, windowTLY, windowBRX, windowBRY);
+    startGraphics();
+
+    drawInfoScreen();
+
+    start:
     startGraphics();
 
     rectangle(rollTLX - 2, rollTLY - 2, rollBRX + 2, rollBRY + 2, true);
@@ -292,7 +320,16 @@ void tetris(void){
     }
 
 setWindow(windowTLX, windowTLY, windowBRX, windowBRY);
-//drawText(4, 70, "Done!", false, WHITETEXT);
+
+drawText(30, 30, "Game over!", true, REDTEXT);
+drawText(30, 67, "Press Space to restart", false, WHITETEXT);
+drawText(30, 70, "Press 0 to return to LCL", false, WHITETEXT);
+
+while (getKey() == keySpace);
+
+while (getKey() != key0 && getKey() != keySpace);
+
+if (getKey() == keySpace) goto start;
 
 return;
 }

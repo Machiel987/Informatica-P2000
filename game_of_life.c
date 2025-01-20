@@ -46,7 +46,6 @@ void drawBoard(unsigned char* adr, unsigned char* boardStatus) __sdcccall(1);
 void evolveBoard(unsigned char* adr, unsigned char* out) __sdcccall(1);
 
 //Run Game of Life on a specified adress.
-//Note that in at
 void runGOL(char* adr, unsigned char w, unsigned char h, unsigned char stopChar){
     unsigned int sizeBoard = ((unsigned) w) * ((unsigned) h);
     unsigned int sizeCList = ((unsigned) (w+2)) * ((unsigned) (h+2));
@@ -96,7 +95,7 @@ void drawIntroScene(void){
     while (getKey() != keyEnter);
 }
 
-void drawInfoScene(void){
+static void drawInfoScene(void){
     while (getKey() == keyEnter);
 
     drawText(10, 0, "Game of Life", true, WHITETEXT);
@@ -157,7 +156,7 @@ void gameOfLife(void){
     initializeScreen();
     drawInstructionScene();
 
-    startRun: 
+    start: 
     initializeScreen();
 
     drawText(4, 70, "Press [enter] to start", false, WHITETEXT);
@@ -212,13 +211,12 @@ void gameOfLife(void){
 
     runGOL(drawAdr, 35, 21, keySpace);
 
-    drawText(4, 70, "Done! Press [enter] to run again", false, WHITETEXT);
+    drawText(30, 67, "Press Space restart", false, WHITETEXT);
+    drawText(30, 70, "Press 0 to return to LCL", false, WHITETEXT);
 
-    while (getKey() != keyEnter);
+    while (getKey() == keySpace);
 
-    goto startRun;
+    while (getKey() != key0 && getKey() != keySpace);
 
-    //free(popCountAlloc);
-
-    //return 0;
+    if (getKey() == keySpace) goto start;
 }

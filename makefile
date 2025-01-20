@@ -1,6 +1,10 @@
+main.cas: main.c graphics.h graphics.asm graphics.c games.h utils.c utils.h keyboard.c keyboard.h walker.c tetris.c game_of_ur.c game_of_life.c game_of_life.asm
+	zcc +p2000 -O3 -SO3 -DAMALLOC -compiler=sdcc -o main \
+	main.c walker.c graphics.c graphics.asm utils.c keyboard.c tetris.c game_of_ur.c game_of_life.c game_of_life.asm \
+	-create-app
+
 main.bin main.map main.rom: main.c graphics.h graphics.asm graphics.c games.h utils.c utils.h keyboard.c keyboard.h walker.c tetris.c
-	zcc \
-	+embedded -clib=sdcc_iy \
+	zcc +embedded -clib=sdcc_iy \
 	main.c graphics.c utils.c keyboard.c graphics.asm walker.c tetris.c \
 	-startup=2 \
 	-pragma-define:CRT_ORG_CODE=0x1000 \
@@ -16,11 +20,6 @@ main.bin main.map main.rom: main.c graphics.h graphics.asm graphics.c games.h ut
 	-create-app -m
 	rm main.bin
 	mv main.rom main.bin
-
-#	+embedded -clib=new \
-#	-compiler=sccz80 -O3 \
-
-#	-S --c-code-in-asm -z80-verb \
 
 clean:
 	rm *.lis

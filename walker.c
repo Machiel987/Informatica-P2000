@@ -608,8 +608,8 @@ void walker(void){
             break;
         }
 
-        sprintf(vidmem + 1840, "                  ");
-        sprintf(vidmem + 1840, "(%i, %i)", posX, posY);
+        //sprintf(vidmem + 1840, "                  ");
+        //sprintf(vidmem + 1840, "(%d, %d)", posX, posY);
 
         if (handleFloorChange(&floor, &posX, &posY)) goto floorStart;
 
@@ -621,14 +621,29 @@ void walker(void){
             }
         }
 
+        //sprintf(vidmem + 1860, "%d", entrance.roomType);
+
         switch (entrance.roomType)
         {
         case MATH:
+            gameOfLife();
+            posY -= entrance.offSetY;
+            goto floorStart;
+            break;
+
+        case HIST:
+            gameOfUr();
+            posY -= entrance.offSetY;
+            goto floorStart;
+            break;
+        
+        case COMS:
             tetris();
             posY -= entrance.offSetY;
             goto floorStart;
             break;
         }
+
 
         key = getKey();
 
