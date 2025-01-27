@@ -395,18 +395,17 @@ unsigned char handleFloorChange(unsigned char* floor, unsigned int* xPos, unsign
     while(getKey() == startKey || (getKey() != keyUp && getKey() != keyDown));
 
     if (getKey() == keyUp && currentStairs.floorUp){
+        sprintf(vidmem + 1840, "Key u");
         *floor += 1;
         *xPos = currentStairs.outXUp;
         *yPos = currentStairs.outYUp;
     }
-    else return 1;
 
     if (getKey() == keyDown && currentStairs.floorDown){
         *floor -= 1;
         *xPos = currentStairs.outXDown;
         *yPos = currentStairs.outYDown;
     }
-    else return 1;
 
     return 1;
 }
@@ -419,12 +418,13 @@ void walker(void){
     floorStart: //When there is a floor change, code begins here
 
     setWindow(windowTLX, windowTLY, windowBRX, windowBRY);
-    startGraphics();
 
     //Update lines depending on the floor level
     switch (floor)
     {
     case 0:
+        startGraphics(GREENGFS);
+
         horizontals = hLines0Inds;
         verticals = vLines0Inds;
         horizontalsLen = sizeof(hLines0Inds) / sizeof(struct hLine);
@@ -438,6 +438,8 @@ void walker(void){
         break;
     
     case 1:
+        startGraphics(YELLOWGFS);
+
         horizontals = hLines1Inds;
         verticals = vLines1Inds;
 
@@ -452,6 +454,8 @@ void walker(void){
         break;
     
     case 2:
+        startGraphics(REDGFS);
+
         horizontals = hLines2Inds;
         verticals = vLines2Inds;
 
@@ -639,6 +643,30 @@ void walker(void){
         
         case COMS:
             tetris();
+            posY -= entrance.offSetY;
+            goto floorStart;
+            break;
+
+        case DUTC:
+            typing(0);
+            posY -= entrance.offSetY;
+            goto floorStart;
+            break;
+
+        case ENGL:
+            typing(1);
+            posY -= entrance.offSetY;
+            goto floorStart;
+            break;
+
+        case PE:
+            reactionTest();
+            posY -= entrance.offSetY;
+            goto floorStart;
+            break;
+
+        case GEOG:
+            countries();
             posY -= entrance.offSetY;
             goto floorStart;
             break;

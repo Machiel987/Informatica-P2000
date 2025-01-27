@@ -8,15 +8,19 @@
 #include "keyboard.h"
 
 int main(void){
+    *(unsigned char*) 0x60AD = 10;
+
     //gameOfLife();
     walker();
     //tetris();
     //reactionTest();
     //gameOfUr();
+    //countries();
+    //typing();
 
     //*(unsigned char*) 0x5000 = 0b01111111;
 
-    //while(1);
+    while(1);
 
 #if 0
     unsigned char prevKey = 0;
@@ -27,7 +31,7 @@ int main(void){
         prevKey = getKey();
 
         sprintf(vidmem + 1840, "   ");
-        sprintf(vidmem + 1840, "%i", getKey());
+        sprintf(vidmem + 1840, "%d", getKey());
     }
 #endif
 

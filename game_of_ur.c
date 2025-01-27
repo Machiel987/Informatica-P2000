@@ -177,14 +177,12 @@ unsigned char moveGen(struct boardState board, unsigned char dice, struct boardS
 //Returns value > 0x80 if player 0 is better, < 0x80 if player 1 is better
 unsigned char staticAnalysis(struct boardState board){
     unsigned char score = 0x80;
-    //score += 5 * board.start1;
-    //score -= 5 * board.start0;
 
     unsigned char counter = 1;
     for (unsigned int i = 2; i != 0x8000; i <<= 1){
         unsigned int stone0 = board.stones0 & i, stone1 = board.stones1 & i;
-        if (stone0 && !stone1) score -= counter;
-        if (!stone0 && stone1) score += counter;
+        if (stone0 && !stone1) score += counter;
+        if (!stone0 && stone1) score -= counter;
         counter++;
     }
 
@@ -243,13 +241,13 @@ static void drawInfoScreen(void){
 
 void gameOfUr(void){
     setWindow(windowTLX, windowTLY, windowBRX, windowBRY);
-    startGraphics();
+    startGraphics(WHITEGFS);
 
     start:
 
     drawInfoScreen();
 
-    startGraphics();
+    startGraphics(WHITEGFS);
 
     struct boardState board = {7, 0, 7, 0, 1, 1};
     struct boardState posMoves[10];

@@ -23,14 +23,14 @@ unsigned char windowTLY = 0;
 unsigned char windowBRX = 79;
 unsigned char windowBRY = 71;
 
-void initializeScreen(void){
+void initializeScreen(unsigned char color){
     for (unsigned int i = 0; i < 1919; i++) vidmem[i] = 32;
-    for (unsigned int i = windowTLY / 3; i <= windowBRY / 3; i ++) vidmem[80*i + windowTLX / 2 - 1] = WHITEGFS;
+    for (unsigned int i = windowTLY / 3; i <= windowBRY / 3; i ++) vidmem[80*i + windowTLX / 2 - 1] = color;
 }
 
 //Fills all LUTs and initializes screen, must be called before attempting graphics routines
-void startGraphics(void){
-    initializeScreen();
+void startGraphics(unsigned char color){
+    initializeScreen(color);
     for (unsigned char i = 0; i < 75; i++) yAdrLUT[i] = 0x5000 + 80 * (i/3) + 2 * (i%3);
 
     //Deeply magical bit shi(f)t
@@ -58,11 +58,12 @@ void setWindow(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned
     windowBRX = BRX;
     windowBRY = BRY;
 }
-
+#if 0
 unsigned char* getWindow(void){
     unsigned char out[4] = {windowTLX, windowTLY, windowBRX, windowBRY};
     return out;
 }
+#endif
 
 inline static unsigned char inRange(unsigned char x, unsigned char y){
     return (x >= windowTLX && x <= windowBRX && y >= windowTLY && y <= windowBRY);
@@ -112,7 +113,7 @@ inline static void unsafeSetPixelOff(unsigned char x, unsigned char y){
 
 //Sets a given pixel. Coordinates are in pixel, not character coordinates
 //wt = white (1 if pixel will be set to white, 0 if set to black)
-inline void setPixel(unsigned char x, unsigned char y, unsigned char wt){
+void setPixel(unsigned char x, unsigned char y, unsigned char wt){
     if (!inRange(x, y)) return;
 
     unsafeSetPixel(x, y, wt);
@@ -397,31 +398,19 @@ void fillRectangle(unsigned char x0, unsigned char y0, unsigned char x1, unsigne
     switch (yminOl)
     {
     case 2:
-        horzLine(xmin, xmax, ymin, wt);
         horzLine(xmin, xmax, ymin + 1, wt);
-        break;
 
     case 4:
         horzLine(xmin, xmax, ymin, wt);
-        break;
-    
-    default:
-        break;
     }
 
     switch (ymaxOl)
     {
+    case 2:
+        horzLine(xmin, xmax, ymax - 1, wt);
+    
     case 0:
         horzLine(xmin, xmax, ymax, wt);
-        break;
-
-    case 2:
-        horzLine(xmin, xmax, ymax, wt);
-        horzLine(xmin, xmax, ymax - 1, wt);
-        break;
-    
-    default:
-        break;
     }
 
     for (unsigned int yAdr = yAdrLUT[ymin + 2] & 0xFFF0; yAdr <= (yAdrLUT[ymax - 2] & 0xFFF0); yAdr += 80){

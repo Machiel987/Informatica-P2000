@@ -177,12 +177,12 @@ static void drawInfoScreen(void){
 //Main function
 void tetris(void){
     setWindow(windowTLX, windowTLY, windowBRX, windowBRY);
-    startGraphics();
+    startGraphics(WHITEGFS);
 
     drawInfoScreen();
 
     start:
-    startGraphics();
+    startGraphics(WHITEGFS);
 
     rectangle(rollTLX - 2, rollTLY - 2, rollBRX + 2, rollBRY + 2, true);
     rectangle(6, 6, 21, 21, true);

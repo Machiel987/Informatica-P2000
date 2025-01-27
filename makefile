@@ -1,6 +1,6 @@
-main.cas: main.c graphics.h graphics.asm graphics.c games.h utils.c utils.h keyboard.c keyboard.h walker.c tetris.c game_of_ur.c game_of_life.c game_of_life.asm
-	zcc +p2000 -O3 -SO3 -DAMALLOC -compiler=sdcc -o main \
-	main.c walker.c graphics.c graphics.asm utils.c keyboard.c tetris.c game_of_ur.c game_of_life.c game_of_life.asm \
+main.cas: main.c graphics.h graphics.asm graphics.c games.h utils.c utils.h keyboard.c keyboard.h walker.c tetris.c game_of_ur.c game_of_life.c game_of_life.asm countries.c typing.c reaction_test.c
+	zcc +p2000 -O3 -SO3 -DAMALLOC --max-allocs-per-node20000 -compiler=sdcc -o main \
+	main.c walker.c graphics.c graphics.asm utils.c keyboard.c tetris.c game_of_ur.c game_of_life.c game_of_life.asm countries.c typing.c reaction_test.c \
 	-create-app
 
 main.bin main.map main.rom: main.c graphics.h graphics.asm graphics.c games.h utils.c utils.h keyboard.c keyboard.h walker.c tetris.c

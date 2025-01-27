@@ -41,11 +41,11 @@ extern unsigned char pxNumToChar[];
 #define pxNumToChar5 ((unsigned char)64)
 
 //Function declarations
-void initializeScreen(void);
-void startGraphics(void);
+//void initializeScreen(void);
+void startGraphics(unsigned char color);
 void setWindow(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY);
-unsigned char* getWindow(void);
-inline void setPixel(unsigned char x, unsigned char y, unsigned char wt);
+//unsigned char* getWindow(void);
+void setPixel(unsigned char x, unsigned char y, unsigned char wt);
 unsigned char getPixel(unsigned char x, unsigned char y);
 //void drawLine(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char wt);
 //void drawLineColor(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char color);

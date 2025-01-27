@@ -149,21 +149,21 @@ void gameOfLife(void){
 
     setWindow(2, 0, 79, 70);
 
-    startGraphics();
+    startGraphics(WHITEGFS);
     drawIntroScene();
-    initializeScreen();
+    startGraphics(WHITEGFS);
     drawInfoScene();
-    initializeScreen();
+    startGraphics(WHITEGFS);
     drawInstructionScene();
 
     start: 
-    initializeScreen();
+    startGraphics(WHITEGFS);
 
-    drawText(4, 70, "Press [enter] to start", false, WHITETEXT);
+    drawText(4, 70, "Press Enter to start", false, WHITETEXT);
 
     while (getKey() == keyEnter);
 
-    horzLine(10, 60, 35, true);
+    //horzLine(10, 60, 35, true);
 
     /*
     setPixel(26, 26, true);
@@ -207,7 +207,7 @@ void gameOfLife(void){
     unsigned char* drawAdr = (unsigned char*) (vidmem + 80 + 2);
 
     drawText(4, 70, "                    ", false, WHITETEXT);
-    drawText(4, 70, "Press [space] to stop", false, WHITETEXT);
+    drawText(4, 70, "Press Space to stop", false, WHITETEXT);
 
     runGOL(drawAdr, 35, 21, keySpace);
 
