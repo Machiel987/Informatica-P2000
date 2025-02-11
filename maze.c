@@ -50,16 +50,14 @@ struct cellCoords* findVis(struct cellCoords coords){
     unsigned char found = false;
 
     for (unsigned int i = 0; i < visLen; i++){
-        if (memcmp(loc, &coords, sizeof(struct cellCoords)) == 0){
-            found = true;
-            break;
+        if (loc[i].x == coords.x && loc[i].y == coords.y){
+            return loc;
         }
 
         loc++;
     }
-
-    if (found) return loc;
-    else return NULL;
+    
+    return NULL;
 }
 
 unsigned char checkLoc(struct cellCoords coords){
