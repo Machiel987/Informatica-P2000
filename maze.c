@@ -14,7 +14,8 @@ struct cellCoords{
     unsigned char y;
 };
 
-struct cellCoords* visited;
+//struct cellCoords* visited;
+unsigned char* visitedX, *visitedY;
 unsigned int visLen = 0;
 
 unsigned char drawX = 0, drawY = 0;
@@ -35,30 +36,41 @@ struct cellCoords subCoords(struct cellCoords a, struct cellCoords b){
 }
 
 void addVis(struct cellCoords coords){
-    visited[visLen] = coords;
+    visitedX[visLen] = coords.x;
+    visitedY[visLen] = coords.y;
     visLen++;
 }
 
-void delVis(struct cellCoords* coords){
+void delVis(unsigned int index){
     visLen--;
-    *coords = *(visited + visLen);
+    visitedX[index] = visitedX[visLen];
+    visitedY[index] = visitedY[visLen];
 }
 
-struct cellCoords* findVis(struct cellCoords coords){
-    struct cellCoords* loc = visited;
+unsigned char* findVis(struct cellCoords coords){
+    unsigned char* p = visitedX;
 
-    unsigned char found = false;
+    while (true){
+        p = memchr(p, coords.x, visLen - (p - visitedX));
+        if (!p)
+            return NULL;
 
-    for (unsigned int i = 0; i < visLen; i++){
-        if (loc[i].x == coords.x && loc[i].y == coords.y){
-            return loc;
-        }
-
-        loc++;
+        if (visitedY[p - visitedX] == coords.y)
+            return p;
+        
+        p++;
     }
-    
+}
+
+#if 0
+unsigned char* findVis(struct cellCoords coords){
+    for (unsigned char* i = visitedX; i < visitedX + visLen; i++){
+        if (*i == coords.x && visitedY[i - visitedX] == coords.y)
+            return i;
+    }
     return NULL;
 }
+#endif
 
 unsigned char checkLoc(struct cellCoords coords){
     if (findVis(coords)) return false;
@@ -68,10 +80,10 @@ unsigned char checkLoc(struct cellCoords coords){
     return true;
 }
 
-struct cellCoords* randomVis(void){
+unsigned int randomVis(void){
     unsigned int index = rand() % visLen;
 
-    return (visited + index);
+    return index;
 }
 
 void drawMaze(unsigned char drawLocX, unsigned char drawLocY, unsigned char mazeSizeX, unsigned char mazeSizeY){
@@ -80,27 +92,31 @@ void drawMaze(unsigned char drawLocX, unsigned char drawLocY, unsigned char maze
     sizeX = mazeSizeX;
     sizeY = mazeSizeY;
 
-    visited = (struct cellCoords*)malloc((sizeX + sizeY) << 1); //Theoretically not always enough, but fine in practice
+    visitedX = (unsigned char*)malloc((sizeX + sizeY) << 1); //Theoretically not always enough, but fine in practice
+    visitedY = (unsigned char*)malloc((sizeX + sizeY) << 1);
 
-    if (visited == NULL){
+    if (visitedX == NULL || visitedY == NULL){
         sprintf(vidmem + 1840, "Out of memory");
         return;
     }
 
-    visited[0].x = drawLocX;
-    visited[0].y = drawLocY;
+    visitedX[0] = drawLocX;
+    visitedY[0] = drawLocY;
     visLen = 1;
 
     setPixel(drawLocX, drawLocY, true);
 
     while (visLen != 0){
-        struct cellCoords *current = randomVis();
+        struct cellCoords current;
+        unsigned int index = randomVis();
+        current.x = visitedX[index];
+        current.y = visitedY[index];
 
         struct cellCoords edges[4] = {
-            {current->x + 2, current->y    },
-            {current->x    , current->y + 2},
-            {current->x - 2, current->y    },
-            {current->x    , current->y - 2}};
+            {current.x + 2, current.y    },
+            {current.x    , current.y + 2},
+            {current.x - 2, current.y    },
+            {current.x    , current.y - 2}};
 
         struct cellCoords filteredEdges[4];
         unsigned char edgeNum = 0;
@@ -113,20 +129,22 @@ void drawMaze(unsigned char drawLocX, unsigned char drawLocY, unsigned char maze
         }
 
         if (edgeNum == 0){
-            delVis(current);
+            delVis(index);
             continue;
         }
 
         struct cellCoords nextEdge;
-        memcpy(&nextEdge, filteredEdges + (rand() % edgeNum), sizeof(struct cellCoords));
+        nextEdge = filteredEdges[rand() % edgeNum];
+        //memcpy(&nextEdge, filteredEdges + (rand() % edgeNum), sizeof(struct cellCoords));
 
         setPixel(nextEdge.x, nextEdge.y, true);
-        setPixel((current->x + nextEdge.x) >> 1, (current->y + nextEdge.y) >> 1, true);
+        setPixel((current.x + nextEdge.x) >> 1, (current.y + nextEdge.y) >> 1, true);
 
         addVis(nextEdge);
     }
 
-    free(visited);
+    free(visitedY);
+    free(visitedX);
 }
 
 void maze(void){
