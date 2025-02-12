@@ -7,7 +7,9 @@
 #include "utils.h"
 #include "keyboard.h"
 
-const static unsigned char windowTLX = 2, windowTLY = 0, windowBRX = 79, windowBRY = 70;
+#define OFFSET 80
+
+const static unsigned char windowTLX = 2, windowTLY = 0, windowBRX = 159, windowBRY = 70;
 
 struct cellCoords{
     unsigned char x;
@@ -15,39 +17,46 @@ struct cellCoords{
 };
 
 //struct cellCoords* visited;
-unsigned char* visitedX, *visitedY;
+struct cellCoords* visited;
 unsigned int visLen = 0;
 
 unsigned char drawX = 0, drawY = 0;
 unsigned char sizeX = 30, sizeY = 30; //Default size is  30x30;
 
-struct cellCoords addCoords(struct cellCoords a, struct cellCoords b){
+static struct cellCoords addCoords(struct cellCoords a, struct cellCoords b){
     struct cellCoords out;
     out.x = a.x + b.x;
     out.y = a.y + b.y;
     return out;
 }
 
-struct cellCoords subCoords(struct cellCoords a, struct cellCoords b){
+static struct cellCoords subCoords(struct cellCoords a, struct cellCoords b){
     struct cellCoords out;
     out.x = a.x - b.x;
     out.y = a.y - b.y;
     return out;
 }
 
-void addVis(struct cellCoords coords){
-    visitedX[visLen] = coords.x;
-    visitedY[visLen] = coords.y;
+static inline void addVis(struct cellCoords coords){
+    setPixel(coords.x + OFFSET, coords.y, true);
+
+    visited[visLen] = coords;
     visLen++;
 }
 
-void delVis(unsigned int index){
+static inline void delVis(struct cellCoords* coords){
+    setPixel(coords->x + OFFSET, coords->y, false);
+
     visLen--;
-    visitedX[index] = visitedX[visLen];
-    visitedY[index] = visitedY[visLen];
+    *coords = visited[visLen];
 }
 
-unsigned char* findVis(struct cellCoords coords){
+static unsigned char findVis(struct cellCoords coords){
+    return getPixel(coords.x + OFFSET, coords.y);
+}
+
+#if 0
+static unsigned char* findVis(struct cellCoords coords){
     unsigned char* p = visitedX;
 
     while (true){
@@ -61,6 +70,7 @@ unsigned char* findVis(struct cellCoords coords){
         p++;
     }
 }
+#endif
 
 #if 0
 unsigned char* findVis(struct cellCoords coords){
@@ -72,7 +82,7 @@ unsigned char* findVis(struct cellCoords coords){
 }
 #endif
 
-unsigned char checkLoc(struct cellCoords coords){
+static unsigned char checkLoc(struct cellCoords coords){
     if (findVis(coords)) return false;
     if (getPixel(coords.x, coords.y)) return false;
     if (coords.x < drawX || coords.x > drawX + sizeX || coords.y < drawY || coords.y > drawY + sizeY) return false;
@@ -80,10 +90,37 @@ unsigned char checkLoc(struct cellCoords coords){
     return true;
 }
 
-unsigned int randomVis(void){
-    unsigned int index = rand() % visLen;
+static inline unsigned char edgeGen(struct cellCoords coords, struct cellCoords* edges){
+    unsigned char len = 0;
+    struct cellCoords current;
+    current = coords;
 
-    return index;
+    current.x = coords.x + 2;
+    if (checkLoc(current)){
+        edges[len] = current;
+        len++;
+    }
+
+    current.x = coords.x - 2;
+    if (checkLoc(current)){
+        edges[len] = current;
+        len++;
+    }
+
+    current.x = coords.x;
+    current.y = coords.y + 2;
+    if (checkLoc(current)){
+        edges[len] = current;
+        len++;
+    }
+
+    current.y = coords.y - 2;
+    if (checkLoc(current)){
+        edges[len] = current;
+        len++;
+    }
+
+    return len;
 }
 
 void drawMaze(unsigned char drawLocX, unsigned char drawLocY, unsigned char mazeSizeX, unsigned char mazeSizeY){
@@ -92,50 +129,37 @@ void drawMaze(unsigned char drawLocX, unsigned char drawLocY, unsigned char maze
     sizeX = mazeSizeX;
     sizeY = mazeSizeY;
 
-    visitedX = (unsigned char*)malloc((sizeX + sizeY) << 1); //Theoretically not always enough, but fine in practice
-    visitedY = (unsigned char*)malloc((sizeX + sizeY) << 1);
+    visited = (struct cellCoords*)malloc(((sizeX + sizeY) << 1) * sizeof(struct cellCoords)); //Theoretically not always enough, but fine in practice
 
-    if (visitedX == NULL || visitedY == NULL){
+    if (visited == NULL){
         sprintf(vidmem + 1840, "Out of memory");
         return;
     }
 
-    visitedX[0] = drawLocX;
-    visitedY[0] = drawLocY;
+    visited[0].x = drawLocX;
+    visited[0].y = drawLocY;
     visLen = 1;
+
+    fillRectangle(OFFSET, 0, 159, 71, false);
 
     setPixel(drawLocX, drawLocY, true);
 
     while (visLen != 0){
         struct cellCoords current;
-        unsigned int index = randomVis();
-        current.x = visitedX[index];
-        current.y = visitedY[index];
+        unsigned int index = rand() % visLen;
+        current = visited[index];
 
-        struct cellCoords edges[4] = {
-            {current.x + 2, current.y    },
-            {current.x    , current.y + 2},
-            {current.x - 2, current.y    },
-            {current.x    , current.y - 2}};
+        struct cellCoords edges[4];
 
-        struct cellCoords filteredEdges[4];
-        unsigned char edgeNum = 0;
-
-        for (unsigned char i = 0; i < 4; i++){
-            if (checkLoc(edges[i])){
-                filteredEdges[edgeNum] = edges[i];
-                edgeNum++;
-            }
-        }
+        unsigned char edgeNum = edgeGen(current, edges);
 
         if (edgeNum == 0){
-            delVis(index);
+            delVis(visited + index);
             continue;
         }
 
         struct cellCoords nextEdge;
-        nextEdge = filteredEdges[rand() % edgeNum];
-        //memcpy(&nextEdge, filteredEdges + (rand() % edgeNum), sizeof(struct cellCoords));
+        nextEdge = edges[rand() % edgeNum];
 
         setPixel(nextEdge.x, nextEdge.y, true);
         setPixel((current.x + nextEdge.x) >> 1, (current.y + nextEdge.y) >> 1, true);
@@ -143,8 +167,7 @@ void drawMaze(unsigned char drawLocX, unsigned char drawLocY, unsigned char maze
         addVis(nextEdge);
     }
 
-    free(visitedY);
-    free(visitedX);
+    free(visited);
 }
 
 void maze(void){
@@ -155,7 +178,7 @@ void maze(void){
 
     unsigned int startTime = getTime();
 
-    drawMaze(3, 3, 40, 40);
+    drawMaze(2, 0, 79, 68);
 
     sprintf(vidmem + 1840, "Done in %d ticks", getTime() - startTime);
 
