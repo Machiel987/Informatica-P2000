@@ -189,109 +189,55 @@ static void drawInfoScreen(void){
 
 void hangman(void){
     setWindow(windowTLX, windowTLY, windowBRX, windowBRY);
-    startGraphics();
+    startGraphics(WHITEGFS);
 
     start:
 
     //drawInfoScreen();
 
-    startGraphics();
+    startGraphics(WHITEGFS);
 
     srand(getTime());
-    unsigned char* secretWord = words[rand() % 1];
-    unsigned char maxWordLen = strlen(secretWord);
+    unsigned char* secretWord = words[rand() % 500];
+    unsigned char wordLen = strlen(secretWord);
 
-    drawText(4, 70, secretWord, false, WHITETEXT);
+    drawText(4, 10, secretWord, false, WHITETEXT);
 
-    *(vidmem + 1680) = WHITETEXT;
-    *(vidmem + 1600) = WHITETEXT;
+    unsigned char guessed = false;
+    unsigned char guessNum = 0;
 
-    while (true){
-        unsigned char inputBuf[20];
-        memset(inputBuf, '\0', 20);
-
-        for (unsigned int i = 1681; i < 1720; i++)
-            *(vidmem + i) = '\0';
-
-        for (unsigned int i = 1601; i < 1640; i++)
-            *(vidmem + i) = '\0';
-
-        unsigned char prevKey = getKey();
-
-        while (getKey() != keyEnter){
-            switch (getKey())
-            {
-            case keyA: strcat(inputBuf, "a"); break;
-            case keyB: strcat(inputBuf, "b"); break;
-            case keyC: strcat(inputBuf, "c"); break;
-            case keyD: strcat(inputBuf, "d"); break;
-            case keyE: strcat(inputBuf, "e"); break;
-            case keyF: strcat(inputBuf, "f"); break;
-            case keyG: strcat(inputBuf, "g"); break;
-            case keyH: strcat(inputBuf, "h"); break;
-            case keyI: strcat(inputBuf, "i"); break;
-            case keyJ: strcat(inputBuf, "j"); break;
-            case keyK: strcat(inputBuf, "k"); break;
-            case keyL: strcat(inputBuf, "l"); break;
-            case keyM: strcat(inputBuf, "m"); break;
-            case keyN: strcat(inputBuf, "n"); break;
-            case keyO: strcat(inputBuf, "o"); break;
-            case keyP: strcat(inputBuf, "p"); break;
-            case keyQ: strcat(inputBuf, "q"); break;
-            case keyR: strcat(inputBuf, "r"); break;
-            case keyS: strcat(inputBuf, "s"); break;
-            case keyT: strcat(inputBuf, "t"); break;
-            case keyU: strcat(inputBuf, "u"); break;
-            case keyV: strcat(inputBuf, "v"); break;
-            case keyW: strcat(inputBuf, "w"); break;
-            case keyX: strcat(inputBuf, "x"); break;
-            case keyY: strcat(inputBuf, "y"); break;
-            case keyZ: strcat(inputBuf, "z"); break;
-            case keyBack: 
-                if (inputBuf[0] != '\0')
-                    inputBuf[strlen(inputBuf) - 1] = '\0';
-            }
-
-            if (strlen(inputBuf) > maxWordLen)
-                inputBuf[strlen(inputBuf) - 1] = '\0';
-
-            drawText(4, 65, inputBuf, true, WHITETEXT);
-
-            while (getKey() == prevKey);
-
-            prevKey = getKey();
-        }
-
-        unsigned char* guessLoc = inputBuf;
-
-        unsigned char counter = 0;
-
-        while (*guessLoc != '\0'){
-            unsigned char* secretLoc = secretWord;
-
-            unsigned char ret = 0;
-
-            while (*secretLoc != '\0'){
-                if (*guessLoc == *secretLoc){
-                    *(vidmem + 1504 + *guessLoc) = *guessLoc;
-                    ret = 1;
-                }
-
-                secretLoc++;
-            }
-
-            counter += ret;
-
-            guessLoc++;
-        }
-
-        if (counter == strlen(secretWord)){
-            drawText(30, 30, "You won!", true, GREENTEXT);
-            break;
-        }
-
+    while ((++guessNum < 15) && !guessed){
         while (getKey() == keyEnter);
+
+        unsigned char key = 0;
+        unsigned char prevKey = 0;
+        while (getKey() != keyEnter){
+            if (getNiceKeyL() == 0xFF) continue;
+            prevKey = key;
+            key = getNiceKeyL();
+        }
+
+        key = prevKey;
+
+        unsigned char* adr = vidmem + 1681;
+
+        *(vidmem + 1680) = WHITETEXT;
+
+        guessed = true;
+        for (unsigned char i = 0; i < wordLen; i++){
+            if (secretWord[i] == key)
+                *adr = key;
+            else
+                if (*adr != secretWord[i]) guessed = false;
+
+            adr++;
+        }
     }
+
+    if(guessed)
+        drawText(20, 20, "You won!", true, GREENTEXT);
+    else
+        drawText(20, 20, "You lost!", false, REDTEXT);
 
     while (getKey() != key0 && getKey() != keySpace);
 

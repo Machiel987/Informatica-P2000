@@ -39,6 +39,7 @@ unsigned char getNiceKeyL(void){
     case keyDot: return '.';
     case keyComma: return ',';
     case keyMinus: return '-';
+    case keyEnter: return '\n';
 
     default: return '\0';
     }

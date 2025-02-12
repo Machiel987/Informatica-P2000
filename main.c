@@ -8,15 +8,17 @@
 #include "keyboard.h"
 
 int main(void){
-    *(unsigned char*) 0x60AD = 10;
+    //*(unsigned char*) 0x60AD = 10;
 
     //gameOfLife();
-    walker();
+    //walker();
     //tetris();
     //reactionTest();
     //gameOfUr();
     //countries();
     //typing();
+    //hangman();
+    maze();
 
     //*(unsigned char*) 0x5000 = 0b01111111;
 
