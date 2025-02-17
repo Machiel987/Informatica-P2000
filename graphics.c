@@ -130,7 +130,6 @@ unsigned char getPixel(unsigned char x, unsigned char y){
 
 //Draws or erases a line between any 2 screen coordinates.
 //Uses a generalized version of Bresenham's line algorithm
-#if 0
 void drawLine(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char wt){
     signed char dx = abs(x1 - x0);
     signed char sx = x0 < x1 ? 1 : -1;
@@ -139,9 +138,9 @@ void drawLine(unsigned char x0, unsigned char y0, unsigned char x1, unsigned cha
     signed char sy = y0 < y1 ? 1 : -1;
 
     int error = dx + dy;
-    int e2 ;
+    int e2;
 
-    while(1){
+    while(true){
         setPixel(x0, y0, wt);
         if (x0 == x1 && y0 == y1) break;
         e2 = 2 * error;
@@ -159,7 +158,6 @@ void drawLine(unsigned char x0, unsigned char y0, unsigned char x1, unsigned cha
 
     return;
 }
-#endif
 
 //Draws or erases a horizontal line without window checking
 void unsafeHorzLine(unsigned char xmin, unsigned char xmax, unsigned char y, unsigned char wt){

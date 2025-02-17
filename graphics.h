@@ -47,7 +47,7 @@ void setWindow(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned
 //unsigned char* getWindow(void);
 void setPixel(unsigned char x, unsigned char y, unsigned char wt);
 unsigned char getPixel(unsigned char x, unsigned char y);
-//void drawLine(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char wt);
+void drawLine(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char wt);
 //void drawLineColor(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char color);
 void unsafeHorzLine(unsigned char xmin, unsigned char xmax, unsigned char y, unsigned char wt);
 void horzLine(unsigned char x0, unsigned char x1, unsigned char y, unsigned char wt);
