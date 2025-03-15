@@ -6,12 +6,11 @@
 #include "utils.h"
 
 //Create reference to video memory
-__at (0x5000) char VIDMEM[];
-char* vidmem = VIDMEM;
+char* vidmem = (char*)0x5000;
 
 //LUT where first 12 bits show address of first character in line of pixels and
 //last 4 bits show 0, 2 or 4 depending on 'parity' of pixel line
-unsigned short yAdrLUT[75];
+unsigned int yAdrLUT[75];
 unsigned char rollTableX[128]; //Table with flipped version of characters
 unsigned char rollTableYUp[128]; //Table with up-shifted version of charecters
 unsigned char rollTableYDn[128]; //Table with down-shifted version of characters
@@ -384,6 +383,17 @@ void fillRectangle(unsigned char x0, unsigned char y0, unsigned char x1, unsigne
     unsigned char ymax = MAX(y0, y1);
     ymax = MIN(ymax, windowBRY);
 
+    if (xmax < xmin || ymax < ymin) return;
+
+    if (xmin == xmax){
+        vertLine(xmin, ymin, ymax, wt);
+        return;
+    }
+    if (ymin == ymax){
+        horzLine(xmin, xmax, ymin, wt);
+        return;
+    }
+
     unsigned char xminOl = xmin % 2;
     unsigned char xmaxOl = xmax % 2;
 
@@ -587,7 +597,7 @@ void drawSprite(struct sprite* buf, unsigned char x0, unsigned char y0){
 #endif
 
 //Rolls a line from characters start to end one pixel to the left, going from startAdr to endAdr
-void rollLeft(unsigned char length, unsigned char* startAdr) __sdcccall(1);
+void rollLeft(unsigned char length, unsigned char* startAdr);
 #if 0
 void rollLeft(unsigned char length, unsigned char* startAdr){
     unsigned char* currentAdr = startAdr;
@@ -609,9 +619,9 @@ void rollLeft(unsigned char length, unsigned char* startAdr){
 #endif
 
 //Rolls a line from characters start to end one pixel to the right, going from startAdr to endAdr
-void rollRight(unsigned char length, unsigned char* endAdr) __sdcccall(1);
+void rollRight(unsigned char length, unsigned char* endAdr);
 #if 0
-void rollRight(unsigned char length, unsigned char* endAdr) __sdcccall(1) {
+void rollRight(unsigned char length, unsigned char* endAdr){
     unsigned char* currentAdr = endAdr;
     unsigned char flip = rollTableX[*currentAdr];
 
@@ -631,7 +641,7 @@ void rollRight(unsigned char length, unsigned char* endAdr) __sdcccall(1) {
 #endif
 
 //Rolls a column from characters start to end one pixel up, going from startAdr to endAdr
-void rollUp(unsigned char length, unsigned char* startAdr) __sdcccall(1);
+void rollUp(unsigned char length, unsigned char* startAdr);
 #if 0
 void rollUp(unsigned char length, unsigned char* startAdr){
     unsigned char* currentAdr = startAdr;
@@ -653,7 +663,7 @@ void rollUp(unsigned char length, unsigned char* startAdr){
 #endif
 
 //Rolls a column from characters start to end one pixel down, going from startAdr to endAdr
-void rollDown(unsigned char length, unsigned char* endAdr) __sdcccall(1);
+void rollDown(unsigned char length, unsigned char* endAdr);
 #if 0
 void rollDown(unsigned char length, unsigned char* endAdr){
     unsigned char* currentAdr = endAdr;

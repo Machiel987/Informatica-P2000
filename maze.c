@@ -8,22 +8,30 @@
 #include "keyboard.h"
 
 #define OFFSET 80
+#define MIDX 40
+#define MIDY 38
+#define SCALING 36
 
-const static unsigned char windowTLX = 2, windowTLY = 0, windowBRX = 159, windowBRY = 70;
+#define LABDAPRECISION 6
+#define LABDAPRECBITS ((int)(1 << LABDAPRECISION))
+#define NOLABDA -1000
+
+const static unsigned char windowTLX = 6, windowTLY = 4, windowBRX = 74, windowBRY = 72;
 
 const static unsigned char voxelSize = 8;
 
-struct vec3 viewLoc = {0, 0, 0};
-struct vec3 viewPlane = {0, 0, 8};
+unsigned char angleY = 0;
+signed char sinAngle, cosAngle;
+
+const signed int sinIndex[] = {0, 3, 6, 9, 11, 13, 15, 16, 16, 16, 15, 13, 11, 9, 6,
+3, 0, -3, -6, -9, -11, -13, -15, -16, -16, -16, -15, -13, -11, -9, -6, -3};
+
+const signed int cosIndex[] = {16, 16, 15, 13, 11, 9, 6, 3, 0, -3, -6, -9, -11, -13,
+-15, -16, -16, -16, -15, -13, -11, -9, -6, -3, 0, 3, 6, 9, 11, 13, 15, 16};
 
 struct screenVec2{
     unsigned char x;
     unsigned char y;
-};
-
-struct bigScreenVec2{
-    signed int x;
-    signed int y;
 };
 
 struct vec3{
@@ -32,12 +40,25 @@ struct vec3{
     signed int z;
 };
 
+struct face{
+    struct vec3 v0;
+    struct vec3 v1;
+    struct vec3 v2;
+    struct vec3 v3;
+    unsigned char wt;
+};
+
 //struct screenVec2* visited;
 struct screenVec2* visited;
 unsigned int visLen = 0;
 
 unsigned char drawX = 0, drawY = 0;
 unsigned char sizeX = 30, sizeY = 30; //Default size is  30x30;
+
+//struct vec3 viewLoc = {10, 8, 0};
+
+struct vec3 voxelList[] = {{-2, -4, 24}, {6, -4, 16}, {-10, -4, 16}};
+unsigned int voxelLen = sizeof (voxelList) / sizeof (struct vec3);
 
 static struct screenVec2 addCoords(struct screenVec2 a, struct screenVec2 b){
     struct screenVec2 out;
@@ -235,40 +256,38 @@ void traverseMaze(void){
     sprintf(vidmem + 1840, "You completed the maze");
 }
 
-static struct bigScreenVec2 toScreen(struct vec3 vector){
-    signed int denom = vector.z - viewLoc.z;
+unsigned char voxelTriangle(struct vec3 *v0, struct vec3 *v1, unsigned char xExt0, unsigned char xExt1, unsigned char wt){
+    unsigned char xBeg = MIDX + (v0->x * SCALING) / v0->z;
+    unsigned char yBeg = MIDY + (v0->y * SCALING) / v0->z;
 
-    if (denom == 0){
-        struct bigScreenVec2 out = {0, 0};
-        return out;
-    }
+    unsigned char xa = xBeg;
+    unsigned char xb = MIDX + (v1->x * SCALING) / v1->z;
 
-    int x = (viewPlane.z * (vector.x - viewLoc.x) << 2) / denom;
-    x += 40;
+    unsigned char ya = yBeg;
+    unsigned char yb = MIDY + (v1->y * SCALING) / v1->z;
 
-    int y = (viewPlane.z * (vector.y - viewLoc.y) << 2) / denom;
-    y += 37;
+    unsigned char horY;
+    if (LT_INT(v0->y, 0))
+        horY = MAX(ya,yb);
+    else
+        horY = MIN(ya,yb);
 
-    struct bigScreenVec2 out = {x, y};
-    return out;
-}
+    //sprintf(vidmem + 1760, "(%d, %d) -> (%d, %d)", xa, ya, xb, yb);
 
-void voxelLine(int x0, int y0, int x1, int y1, unsigned char wt){
-    unsigned int xa = x0 + 0x8000, ya = y0 + 0x8000;
-    unsigned int xb = x1 + 0x8000, yb = y1 + 0x8000;
+    //if ((xa == xb) && (ya == yb)) return horY;
 
-    int dx = abs(xb - xa);
+    signed int dx = abs(xb - xa);
     signed char sx = xa < xb ? 1 : -1;
 
-    int dy = -abs(yb - ya);
+    signed int dy = -abs(yb - ya);
     signed char sy = ya < yb ? 1 : -1;
 
     int error = dx + dy;
     int e2;
 
     while(true){
-        if (xa >= 0x8000 && xa <= 0x80FF && ya >= 0x8000 && ya <= 0x80FF)
-            setPixel(xa & 0xFF, ya & 0xFF, wt);
+        vertLine(xa, ya, horY, wt);
+        setPixel(xa, ya, true);
         
         if (xa == xb && ya == yb) break;
         e2 = 2 * error;
@@ -284,152 +303,236 @@ void voxelLine(int x0, int y0, int x1, int y1, unsigned char wt){
         }
     }
 
+    fillRectangle(xBeg, yBeg, xExt0, horY, wt);
+    fillRectangle(xa, ya, xExt1, horY, wt);
+
+    vertLine(xExt0, yBeg, horY, true);
+    vertLine(xExt1, ya, horY, true);
+
+    //sprintf(vidmem + 1840, "(%u, %u), (%u, %u)", v0.x, v0.y, v1.x, v1.y);
+
+    return horY;
+}
+
+struct vec3 labdaToVec(struct vec3* d0, struct vec3* d1, signed int labda){
+    if ((labda > LABDAPRECBITS) || (labda & 0x8000))
+        sprintf(vidmem + 1760, "Weird labda");
+
+    struct vec3 out;
+
+    out.x = d0->x + ((labda * (d1->x - d0->x)) >> LABDAPRECISION);
+    out.y = d0->y + ((labda * (d1->y - d0->y)) >> LABDAPRECISION);
+    out.z = d0->z + ((labda * (d1->z - d0->z)) >> LABDAPRECISION);
+
+    return out;
+}
+
+enum direction{
+    InScreen, OutOfScreenA, OutOfScreenB, BehindScreen
+};
+
+enum direction inRangeVec3X(struct vec3* v0){
+    if (v0->z & 0x8000) return BehindScreen;
+
+    if (abs(v0->x) < abs(v0->z))
+        return InScreen;
+    else
+        if (v0->x & 0x8000) return OutOfScreenA;
+        else return OutOfScreenB;
+}
+
+enum direction inRangeVec3Y(struct vec3* v0){
+    if (v0->z & 0x8000) return BehindScreen;
+
+    if (abs(v0->y) < abs(v0->z))
+        return InScreen;
+    else
+        if (v0->y & 0x8000) return OutOfScreenA;
+        else return OutOfScreenB;
+}
+
+unsigned char findLabdas(struct vec3* d0, struct vec3* d1, signed int* labda0, signed int* labda1, unsigned char y){
+    signed int relCoord0 = y ? d0->y : d0->x;
+    signed int relCoord1 = y ? d1->y : d1->x;
+
+    signed int labdaA = ((relCoord0 + d0->z) << LABDAPRECISION) / (relCoord0 + d0->z - relCoord1 - d1->z); //Left screen bound
+    signed int labdaB = ((relCoord0 - d0->z) << LABDAPRECISION) / (relCoord0 - d0->z - relCoord1 + d1->z); //Right screen bound
+
+    signed int labdaMin = MIN(labdaA, labdaB); //Note: DO NOT USE MIN_INT
+    signed int labdaMax = LABDAPRECBITS - MIN(LABDAPRECBITS - labdaA, LABDAPRECBITS - labdaB);
+
+    enum direction r0 = y ? inRangeVec3Y(d0) : inRangeVec3X(d0);
+    enum direction r1 = y ? inRangeVec3Y(d1) : inRangeVec3X(d1);
+
+    if ((r0 == r1) && (r0 == BehindScreen || r0 == OutOfScreenA || r0 == OutOfScreenB)) return false;
+    if ((r0 == OutOfScreenA || r0 == OutOfScreenB) && r1 == BehindScreen) return false; //Not actually correct
+    if ((r1 == OutOfScreenA || r1 == OutOfScreenB) && r0 == BehindScreen) return false; //Not actually correct
+    if ((r0 == r1) && (r0 == InScreen)){
+        *labda0 = 0;
+        *labda1 = LABDAPRECBITS;
+        return true;
+    }
+    if ((r0 == OutOfScreenA || r0 == OutOfScreenB) && r1 == InScreen){
+        *labda0 = labdaMin;
+        *labda1 = LABDAPRECBITS;
+        return true;
+    }
+    if ((r1 == OutOfScreenA || r1 == OutOfScreenB) && r0 == InScreen){
+        *labda0 = 0;
+        *labda1 = labdaMin;
+        return true;
+    }
+    if (r0 == BehindScreen && r1 == InScreen){
+        *labda0 = labdaMax;
+        *labda1 = LABDAPRECBITS;
+        return true;
+    }
+    if (r1 == BehindScreen && r0 == InScreen){
+        *labda0 = 0;
+        *labda1 = labdaMin;
+        return true;
+    }
+    if (r0 == OutOfScreenA && r1 == OutOfScreenB){
+        *labda0 = labdaA;
+        *labda1 = labdaB;
+        return true;
+    }
+    if (r0 == OutOfScreenB && r1 == OutOfScreenA){
+        *labda0 = labdaB;
+        *labda1 = labdaA;
+        return true;
+    }
+    //*labda0 = 0;
+    //*labda1 = 0;
+
+    return false;
+}
+
+unsigned char clipLine(struct vec3* d0, struct vec3* d1, unsigned char* x0, unsigned char* x1){
+    signed int labda0, labda1;
+
+    if (!findLabdas(d0, d1, &labda0, &labda1, false)) return 1;
+
+    struct vec3 clippedX0, clippedX1;
+    clippedX0 = labdaToVec(d0, d1, labda0);
+    clippedX1 = labdaToVec(d0, d1, labda1);
+
+    *x0 = MIDX + (clippedX0.x * SCALING) / clippedX0.z;
+    *x1 = MIDX + (clippedX1.x * SCALING) / clippedX1.z;
+
+    if (!findLabdas(&clippedX0, &clippedX1, &labda0, &labda1, true)) return 2;
+    
+    struct vec3 clippedY0, clippedY1;
+    clippedY0 = labdaToVec(&clippedX0, &clippedX1, labda0);
+    clippedY1 = labdaToVec(&clippedX0, &clippedX1, labda1);
+
+    *d0 = clippedY0;
+    *d1 = clippedY1;
+
+    return 0;
+}
+
+void voxelFace(struct face *f0){
+    unsigned char wt = f0->wt;
+    struct vec3 allVecs[4];
+    allVecs[0] = f0->v0, allVecs[1] = f0->v1, allVecs[2] = f0->v2, allVecs[3] = f0->v3;
+
+    for (unsigned char i = 0; i < 4; i++){
+        //struct vec3 sub = {allVecs[i].x - viewLoc.x, allVecs[i].y - viewLoc.y, allVecs[i].z - viewLoc.z};
+        struct vec3 sub = {allVecs[i].x, allVecs[i].y, allVecs[i].z};
+        struct vec3 next = {(sub.x * cosAngle - sub.z * sinAngle), sub.y << 4, (sub.x * sinAngle + sub.z * cosAngle)};
+        allVecs[i] = next;
+    }
+
+    unsigned char xExt0 = 0, xExt1 = 0;
+    unsigned char hor0 = 0, hor1 = 0;
+
+    unsigned char ret0 = clipLine(allVecs + 0, allVecs + 1, &xExt0, &xExt1);
+    if (ret0 == 0) hor0 = voxelTriangle(allVecs + 0, allVecs + 1, xExt0, xExt1, wt);
+
+    unsigned char ret1 = clipLine(allVecs + 2, allVecs + 3, &xExt0, &xExt1);
+    if (ret1 == 0) hor1 = voxelTriangle(allVecs + 2, allVecs + 3, xExt0, xExt1, wt);
+
+    unsigned char topY = 0, botY = 0;
+
+    switch (ret0)
+    {
+    case 0: topY = hor0 - 1; break;
+    case 1: return;
+    case 2: topY = MIDY + SCALING; break;
+    }
+
+    switch (ret1)
+    {
+    case 0: botY = hor1 + 1; break;
+    case 1: return;
+    case 2: botY = MIDY - SCALING; break;
+    }
+
+    fillRectangle(xExt0, topY, xExt1, botY, wt);
+    vertLine(xExt0, topY, botY, true);
+    vertLine(xExt1, topY, botY, true);
+
+    //sprintf(vidmem + 1760, "%d, %d, %d, %d", xExt0, topY, xExt1, botY);
+
     return;
 }
 
-void triangleLine(unsigned int* x, unsigned int* y, int* error, int dx, int dy, signed char sy){
-    while (true){
-        int e2 = 2 * (*error);
-
-        if (e2 - dx < 0){
-            *error += dx;
-            (*y) += sy;
-        }
-
-        if (e2 - dy >= 0){
-            *error += dy;
-            (*x)++;
-            break;
-        }
-    }
+void avgVec(struct face *f0, struct vec3 *v0){
+    v0->x = (f0->v0.x + f0->v1.x + f0->v2.x + f0->v3.x) >> 2;
+    v0->y = (f0->v0.y + f0->v1.y + f0->v2.y + f0->v3.y) >> 2;
+    v0->z = (f0->v0.z + f0->v1.z + f0->v2.z + f0->v3.z) >> 2;
 }
 
-void voxelTriangle(int x0, int y0, int x1, int y1, int x2, int y2, unsigned char wt){
-    unsigned int xs[3] = {x0 + 0x8000, x1 + 0x8000, x2 + 0x8000};
-    unsigned int ys[3] = {y0 + 0x8000, y1 + 0x8000, y2 + 0x8000};
-
-    unsigned int sortedXs[3];
-    unsigned int sortedYs[3];
-
-    for (unsigned char j = 0; j < 3; j++){
-        unsigned char topInd = 0;
-        if (xs[1] < xs[topInd]) topInd = 1;
-        if (xs[2] < xs[topInd]) topInd = 2;
-
-        sortedXs[j] = xs[topInd];
-        sortedYs[j] = ys[topInd];
-        xs[topInd] = UINT16_MAX;
-    }
-
-    unsigned int v0X = sortedXs[0], v0Y = sortedYs[0];
-    unsigned int v1X = sortedXs[1], v1Y = sortedYs[1];
-    unsigned int v2X = sortedXs[2], v2Y = sortedYs[2];
-
-    //sprintf(vidmem + 1840, "(%d, %d), (%d, %d), (%d, %d)", v0X, v0Y, v1X, v1Y, v2X, v2Y);
-
-    unsigned int xa = v0X, ya = v0Y, xb = v0X, yb = v0Y;
-
-    int dx1 = v1X - v0X;
-
-    int dy1 = -abs(v0Y - v1Y);
-    signed char sy1 = v0Y < v1Y ? 1 : -1;
-
-    int error1 = dx1 + dy1;
-
-    int dx2 = v2X - v0X;
-
-    int dy2 = -abs(v0Y - v2Y);
-    signed char sy2 = v0Y < v2Y ? 1 : -1;
-
-    int error2 = dx2 + dy2;
-
-    while (true){
-        if (xa >= 0x8000 && xa <= 0x80FF){
-            unsigned int yMin = MIN(ya, yb), yMax = MAX(ya, yb);
-
-            if (yMin < 0x8000) yMin = 0x8000;
-            if (yMin > 0x80FF) break;
-            if (yMax < 0x8000) break;
-            if (yMax > 0x80FF) yMax = 0x80FF;
-
-            vertLine(xa & 0xFF, yMin & 0xFF, yMax & 0xFF, wt);
-        }
-        
-        if (xa == v1X) break;
-
-        triangleLine(&xa, &ya, &error1, dx1, dy1, sy1);
-        triangleLine(&xb, &yb, &error2, dx2, dy2, sy2);
-    }
-
-    ya = v1Y;
-
-    dx1 = v2X - v1X;
-
-    dy1 = -abs(v1Y - v2Y);
-    sy1 = v1Y < v2Y ? 1 : -1;
-
-    error1 = dx1 + dy1;
-
-    while (true){
-        if (xa >= 0x8000 && xa <= 0x80FF){
-            unsigned int yMin = MIN(ya, yb), yMax = MAX(ya, yb);
-
-            if (yMin < 0x8000) yMin = 0x8000;
-            if (yMin > 0x80FF) goto skip;
-            if (yMax < 0x8000) goto skip;
-            if (yMax > 0x80FF) yMax = 0x80FF;
-
-            vertLine(xa & 0xFF, yMin & 0xFF, yMax & 0xFF, wt);
-        }
-
-        skip:
-        
-        if (xa == v2X) break;
-
-        triangleLine(&xa, &ya, &error1, dx1, dy1, sy1);
-        triangleLine(&xb, &yb, &error2, dx2, dy2, sy2);
-    }
-
-    return;
+inline int vec2Dist(struct vec3 *v0){
+    return v0->x * v0->x + v0->y * v0->y + v0->z * v0->z;
 }
 
-void voxelFace(struct bigScreenVec2 v0, struct bigScreenVec2 v1, struct bigScreenVec2 v2, struct bigScreenVec2 v3, unsigned char wt){
-    voxelTriangle(v0.x, v0.y, v1.x, v1.y, v2.x, v2.y, wt);
-    voxelTriangle(v1.x, v1.y, v2.x, v2.y, v3.x, v3.y, wt);
-
-    if (!wt){
-        voxelLine(v0.x, v0.y, v1.x, v1.y, true);
-        voxelLine(v1.x, v1.y, v3.x, v3.y, true);
-        voxelLine(v3.x, v3.y, v2.x, v2.y, true);
-        voxelLine(v2.x, v2.y, v0.x, v0.y, true);
-    }
+int cmpVec3(struct vec3 *v0, struct vec3 *v1){
+    return vec2Dist(v1) - vec2Dist(v0);
 }
 
-void drawVoxel(struct vec3 vector){
-    struct bigScreenVec2 points[8];
+int cmpFace(struct face *f0, struct face *f1){
+    struct vec3 v0 = {0,0,0}, v1 = {0,0,0};
+    avgVec(f0, &v0);
+    avgVec(f1, &v1);
+    return vec2Dist(&v1) - vec2Dist(&v0);
+}
+
+void drawVoxel(struct vec3 *vector){
+    struct vec3 points[8];
 
     for (unsigned char i = 0; i < 8; i++){
-        struct vec3 point3D = {(i & 0b1) * voxelSize + vector.x, ((i & 0b10) >> 1) * voxelSize + vector.y, ((i & 0b100) >> 2) * voxelSize + vector.z};
-        points[i] = toScreen(point3D);
+        points[i].x = (i & 0b1) * voxelSize + vector->x;
+        points[i].y = ((i & 0b10) >> 1) * voxelSize + vector->y;
+        points[i].z = ((i & 0b100) >> 2) * voxelSize + vector->z;
     }
 
-    voxelFace(points[0], points[2], points[4], points[6], true);
-    voxelFace(points[1], points[3], points[5], points[7], true);
-    voxelFace(points[0], points[1], points[2], points[3], false);
-/*
-    voxelLine(points[0].x, points[0].y, points[1].x, points[1].y, true);
-    voxelLine(points[0].x, points[0].y, points[2].x, points[2].y, true);
-    voxelLine(points[1].x, points[1].y, points[3].x, points[3].y, true);
-    voxelLine(points[2].x, points[2].y, points[3].x, points[3].y, true);
-    voxelLine(points[0].x, points[0].y, points[4].x, points[4].y, true);
-    voxelLine(points[1].x, points[1].y, points[5].x, points[5].y, true);
-    voxelLine(points[2].x, points[2].y, points[6].x, points[6].y, true);
-    voxelLine(points[3].x, points[3].y, points[7].x, points[7].y, true);
-    voxelLine(points[4].x, points[4].y, points[5].x, points[5].y, true);
-    voxelLine(points[4].x, points[4].y, points[6].x, points[6].y, true);
-    voxelLine(points[5].x, points[5].y, points[7].x, points[7].y, true);
-    voxelLine(points[6].x, points[6].y, points[7].x, points[7].y, true);
-*/
+    struct face faces[4];
+
+    faces[0].v0 = points[7], faces[0].v1 = points[6], faces[0].v2 = points[5], faces[0].v3 = points[4], faces[0].wt = false;
+    faces[1].v0 = points[6], faces[1].v1 = points[2], faces[1].v2 = points[4], faces[1].v3 = points[0], faces[1].wt = true;
+    faces[2].v0 = points[3], faces[2].v1 = points[7], faces[2].v2 = points[1], faces[2].v3 = points[5], faces[2].wt = true;
+    faces[3].v0 = points[2], faces[3].v1 = points[3], faces[3].v2 = points[0], faces[3].v3 = points[1], faces[3].wt = false;
+
+    qsort(faces, 4, sizeof(struct face), cmpFace);
+
+    for (unsigned char i = 0; i < 4; i++){
+        voxelFace(faces + i);
+    }
+
+    //voxelFace(points[7], points[6], points[5], points[4], false);
+    //voxelFace(points[6], points[2], points[4], points[0], true);
+    //voxelFace(points[3], points[7], points[1], points[5], true);
+    //voxelFace(points[2], points[3], points[0], points[1], false);
+}
+
+void initializeVoxels(void){
+    for (unsigned int i = 0; i < voxelLen; i++){
+        voxelList[i].x = voxelList[i].x;
+        voxelList[i].y = voxelList[i].y;
+        voxelList[i].z = voxelList[i].z;
+    }
 }
 
 void maze(void){
@@ -438,51 +541,123 @@ void maze(void){
 
     srand(getTime());
 
-    struct vec3 voxelList[] = {{0, 4, 24}, {8, 4, 16}, {-8, 4, 16}};
-    unsigned int voxelLen = sizeof (voxelList) / sizeof (struct vec3);
+    initializeVoxels();
 
-#if 0
+#if 1
     while (true){
         while (getKey() == keyNone);
+
+        fillRectangle(windowTLX, windowTLY, windowBRX, windowBRY, false);
+
+        unsigned int startTime = getTime();
+
+        unsigned char walkState = 0xFF;
 
         switch (getKey())
         {
         case keyUp:
-            viewLoc.z += 1;
+            if (4 < angleY && angleY <= 12) walkState = 0;
+            if (12 < angleY && angleY <= 20) walkState = 1;
+            if (20 < angleY && angleY <= 28) walkState = 2;
+            if (angleY <= 4 || 28 < angleY) walkState = 3;
             break;
         
         case keyDown:
-            viewLoc.z -= 1;
+            if (4 < angleY && angleY <= 12) walkState = 2;
+            if (12 < angleY && angleY <= 20) walkState = 3;
+            if (20 < angleY && angleY <= 28) walkState = 0;
+            if (angleY <= 4 || 28 < angleY) walkState = 1;
             break;
 
         case keyRight:
-            viewLoc.x += 1;
+            if (4 < angleY && angleY <= 12) walkState = 1;
+            if (12 < angleY && angleY <= 20) walkState = 2;
+            if (20 < angleY && angleY <= 28) walkState = 3;
+            if (angleY <= 4 || 28 < angleY) walkState = 0;
             break;
         
         case keyLeft:
-            viewLoc.x -= 1;
+            if (4 < angleY && angleY <= 12) walkState = 3;
+            if (12 < angleY && angleY <= 20) walkState = 0;
+            if (20 < angleY && angleY <= 28) walkState = 1;
+            if (angleY <= 4 || 28 < angleY) walkState = 2;
             break;
 
         case keyComma:
-            viewLoc.y += 1;
+            walkState = 4;
             break;
         
         case keyDot:
-            viewLoc.y -= 1;
+            walkState = 5;
+            break;
+
+        case keyS:
+            if (angleY == 31) angleY = 0;
+            else angleY++;
+            sinAngle = sinIndex[angleY];
+            cosAngle = cosIndex[angleY];
+            break;
+
+        case keyA:
+            if (angleY == 0) angleY = 31;
+            else angleY--;
+            sinAngle = sinIndex[angleY];
+            cosAngle = cosIndex[angleY];
             break;
         }
 
-        fillRectangle(windowTLX, windowTLY, windowBRX, windowBRY, false);
+        //viewLoc.x++ -> 0
+        //viewLoc.z-- -> 1
+        //viewLoc.x-- -> 2
+        //viewLoc.z++ -> 3
+        //viewLoc.y++ -> 4
+        //viewLoc.y-- -> 5
 
-        for (unsigned char i = 0; i < voxelLen; i++){
-            drawVoxel(voxelList[i]);
+        switch (walkState)
+        {
+        case 0:
+            for (unsigned int i = 0; i < voxelLen; i++)
+                voxelList[i].x--;
+            break;
+        
+        case 1:
+            for (unsigned int i = 0; i < voxelLen; i++)
+                voxelList[i].z++;
+            break;
+        
+        case 2:
+            for (unsigned int i = 0; i < voxelLen; i++)
+                voxelList[i].x++;
+            break;
+        
+        case 3:
+            for (unsigned int i = 0; i < voxelLen; i++)
+                voxelList[i].z--;
+            break;
+        
+        case 4:
+            for (unsigned int i = 0; i < voxelLen; i++)
+                voxelList[i].y--;
+            break;
+        
+        case 5:
+            for (unsigned int i = 0; i < voxelLen; i++)
+                voxelList[i].y++;
+            break;
         }
 
-        sprintf(vidmem + 1840, "(%d, %d, %d)", viewLoc.x, viewLoc.y, viewLoc.z);
+        //Since the viewing position only changes a small amount, the list will always be (nearly) sorted, so using qsort is a bad idea
+        qsort(voxelList, voxelLen, sizeof(struct vec3), cmpVec3);
+
+        for (unsigned char i = 0; i < voxelLen; i++){
+            drawVoxel(voxelList + i);
+        }
+
+        sprintf(vidmem + 1840, "Time: %d", getTime() - startTime);
     }
 #endif
 
-    voxelTriangle(5, 20, 15, 30, 20, -5, true);
+    //voxelTriangle(-5, 20, -10, 30, -20, 40, true);
 
     //sprintf(vidmem + 1840, "done");
 
@@ -490,5 +665,5 @@ void maze(void){
 
     //traverseMaze();
 
-    while (true);
+    while (1);
 }

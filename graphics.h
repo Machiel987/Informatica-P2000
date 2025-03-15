@@ -31,7 +31,7 @@ struct sprite{
 
 //Constants
 extern char* vidmem;
-extern unsigned short yAdrLUT[75];
+extern unsigned int yAdrLUT[75];
 extern unsigned char pxNumToChar[];
 #define pxNumToChar0 ((unsigned char) 1)
 #define pxNumToChar1 ((unsigned char) 2)
