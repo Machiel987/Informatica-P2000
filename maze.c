@@ -10,24 +10,26 @@
 #define OFFSET 80
 #define MIDX 40
 #define MIDY 38
-#define SCALING 36
+#define SCALING 34
+
+#define TRIGPRECISION 4
 
 #define LABDAPRECISION 6
 #define LABDAPRECBITS ((int)(1 << LABDAPRECISION))
 #define NOLABDA -1000
 
-const static unsigned char windowTLX = 6, windowTLY = 4, windowBRX = 74, windowBRY = 72;
+const static unsigned char windowTLX = 8, windowTLY = 6, windowBRX = 72, windowBRY = 70;
 
 const static unsigned char voxelSize = 8;
-
-unsigned char angleY = 0;
-signed char sinAngle, cosAngle;
 
 const signed int sinIndex[] = {0, 3, 6, 9, 11, 13, 15, 16, 16, 16, 15, 13, 11, 9, 6,
 3, 0, -3, -6, -9, -11, -13, -15, -16, -16, -16, -15, -13, -11, -9, -6, -3};
 
 const signed int cosIndex[] = {16, 16, 15, 13, 11, 9, 6, 3, 0, -3, -6, -9, -11, -13,
 -15, -16, -16, -16, -15, -13, -11, -9, -6, -3, 0, 3, 6, 9, 11, 13, 15, 16};
+
+unsigned char angleY = 0;
+signed char sinAngle = 0, cosAngle = 16;
 
 struct screenVec2{
     unsigned char x;
@@ -45,21 +47,29 @@ struct face{
     struct vec3 v1;
     struct vec3 v2;
     struct vec3 v3;
+
+    struct screenVec2 s0;
+    struct screenVec2 s1;
+    struct screenVec2 s2;
+    struct screenVec2 s3;
+
+    unsigned char use2D;
     unsigned char wt;
 };
 
 //struct screenVec2* visited;
-struct screenVec2* visited;
+struct screenVec2* visited; //List of co-ordinates already visited
 unsigned int visLen = 0;
 
 unsigned char drawX = 0, drawY = 0;
-unsigned char sizeX = 30, sizeY = 30; //Default size is  30x30;
+unsigned char sizeX = 30, sizeY = 30; //Default size is of maze is 30x30;
 
 //struct vec3 viewLoc = {10, 8, 0};
 
-struct vec3 voxelList[] = {{-2, -4, 24}, {6, -4, 16}, {-10, -4, 16}};
+struct vec3 voxelList[] = {{-2, -4, 24}, {6, -4, 16}, {-10, -4, 16}}; //List of voxels te draw, will later be generated from the maze
 unsigned int voxelLen = sizeof (voxelList) / sizeof (struct vec3);
 
+//Add up 2 screen vectors
 static struct screenVec2 addCoords(struct screenVec2 a, struct screenVec2 b){
     struct screenVec2 out;
     out.x = a.x + b.x;
@@ -67,6 +77,7 @@ static struct screenVec2 addCoords(struct screenVec2 a, struct screenVec2 b){
     return out;
 }
 
+//Substract 2 screen vectors
 static struct screenVec2 subCoords(struct screenVec2 a, struct screenVec2 b){
     struct screenVec2 out;
     out.x = a.x - b.x;
@@ -74,6 +85,7 @@ static struct screenVec2 subCoords(struct screenVec2 a, struct screenVec2 b){
     return out;
 }
 
+//Add a co-ordinate to the list of co-ordinates visited
 static inline void addVis(struct screenVec2 coords){
     setPixel(coords.x + OFFSET, coords.y, true);
 
@@ -81,6 +93,7 @@ static inline void addVis(struct screenVec2 coords){
     visLen++;
 }
 
+//Delete a co-ordinate from the list of co-ordinates visited.
 static inline void delVis(struct screenVec2* coords){
     setPixel(coords->x + OFFSET, coords->y, false);
 
@@ -88,6 +101,7 @@ static inline void delVis(struct screenVec2* coords){
     *coords = visited[visLen];
 }
 
+//Check whether a co-ordinate is in the visited list
 static unsigned char findVis(struct screenVec2 coords){
     return getPixel(coords.x + OFFSET, coords.y);
 }
@@ -119,6 +133,7 @@ unsigned char* findVis(struct screenVec2 coords){
 }
 #endif
 
+//Check whether co-ordinate can be drawn
 static unsigned char checkLoc(struct screenVec2 coords){
     if (findVis(coords)) return false;
     if (getPixel(coords.x, coords.y)) return false;
@@ -127,6 +142,7 @@ static unsigned char checkLoc(struct screenVec2 coords){
     return true;
 }
 
+//Generate the possible edges of a pixel
 static inline unsigned char edgeGen(struct screenVec2 coords, struct screenVec2* edges){
     unsigned char len = 0;
     struct screenVec2 current;
@@ -160,6 +176,7 @@ static inline unsigned char edgeGen(struct screenVec2 coords, struct screenVec2*
     return len;
 }
 
+//Generate/draw a maze
 void drawMaze(unsigned char drawLocX, unsigned char drawLocY, unsigned char mazeSizeX, unsigned char mazeSizeY){
     drawX = drawLocX;
     drawY = drawLocY;
@@ -207,6 +224,7 @@ void drawMaze(unsigned char drawLocX, unsigned char drawLocY, unsigned char maze
     free(visited);
 }
 
+//Walk through a maze
 void traverseMaze(void){
     unsigned char posX = drawX, posY = drawY;
 
@@ -256,18 +274,22 @@ void traverseMaze(void){
     sprintf(vidmem + 1840, "You completed the maze");
 }
 
-unsigned char voxelTriangle(struct vec3 *v0, struct vec3 *v1, unsigned char xExt0, unsigned char xExt1, unsigned char wt){
-    unsigned char xBeg = MIDX + (v0->x * SCALING) / v0->z;
-    unsigned char yBeg = MIDY + (v0->y * SCALING) / v0->z;
+//Draw a sub-triangle of the face of a voxel.
+//Uses two 3D co-ordinates and two single X co-ordinates which encode how far the triangle should be extended if it clips outside the screen.
+unsigned char voxelTriangle(struct screenVec2 *s0, struct screenVec2* s1, unsigned char xExt0, unsigned char xExt1, unsigned char wt){
+    unsigned char xBeg, yBeg, xa, ya, xb, yb;
+    
+    xBeg = s0->x;
+    yBeg = s0->y;
+    
+    xb = s1->x;
+    yb = s1->y;
 
-    unsigned char xa = xBeg;
-    unsigned char xb = MIDX + (v1->x * SCALING) / v1->z;
-
-    unsigned char ya = yBeg;
-    unsigned char yb = MIDY + (v1->y * SCALING) / v1->z;
+    xa = xBeg;
+    ya = yBeg;
 
     unsigned char horY;
-    if (LT_INT(v0->y, 0))
+    if (s0->y < MIDY)
         horY = MAX(ya,yb);
     else
         horY = MIN(ya,yb);
@@ -303,8 +325,8 @@ unsigned char voxelTriangle(struct vec3 *v0, struct vec3 *v1, unsigned char xExt
         }
     }
 
-    fillRectangle(xBeg, yBeg, xExt0, horY, wt);
-    fillRectangle(xa, ya, xExt1, horY, wt);
+    if (xBeg != xExt0) fillRectangle(xBeg, yBeg, xExt0, horY, wt);
+    if (xa != xExt1) fillRectangle(xa, ya, xExt1, horY, wt);
 
     vertLine(xExt0, yBeg, horY, true);
     vertLine(xExt1, ya, horY, true);
@@ -314,9 +336,13 @@ unsigned char voxelTriangle(struct vec3 *v0, struct vec3 *v1, unsigned char xExt
     return horY;
 }
 
+//Calculate the following:
+// /x\   /a\           / /d\   /a\ \ 
+// |y| = |b| + labda * | |e| - |b| |
+// \z/   \c/           \ \f/   \c/ /
 struct vec3 labdaToVec(struct vec3* d0, struct vec3* d1, signed int labda){
     if ((labda > LABDAPRECBITS) || (labda & 0x8000))
-        sprintf(vidmem + 1760, "Weird labda");
+        sprintf(vidmem + 1760, "Labda out of range"); //Should never happen
 
     struct vec3 out;
 
@@ -327,10 +353,12 @@ struct vec3 labdaToVec(struct vec3* d0, struct vec3* d1, signed int labda){
     return out;
 }
 
+//State encoding the positions a point could be in relation to the camera
 enum direction{
     InScreen, OutOfScreenA, OutOfScreenB, BehindScreen
 };
 
+//Determine in which state a 3D co-ordinate is when compared to the X co-ordinate
 enum direction inRangeVec3X(struct vec3* v0){
     if (v0->z & 0x8000) return BehindScreen;
 
@@ -341,6 +369,7 @@ enum direction inRangeVec3X(struct vec3* v0){
         else return OutOfScreenB;
 }
 
+//Determine in which state a 3D co-ordinate is when compared to the Y co-ordinate
 enum direction inRangeVec3Y(struct vec3* v0){
     if (v0->z & 0x8000) return BehindScreen;
 
@@ -351,6 +380,14 @@ enum direction inRangeVec3Y(struct vec3* v0){
         else return OutOfScreenB;
 }
 
+unsigned char inRangeTotal(struct vec3* v0){
+    if (inRangeVec3X(v0) == InScreen && inRangeVec3Y(v0) == InScreen)
+        return true;
+    else
+        return false;
+}
+
+//Determine the correct labdas for clipping the 3D vector onto the screen
 unsigned char findLabdas(struct vec3* d0, struct vec3* d1, signed int* labda0, signed int* labda1, unsigned char y){
     signed int relCoord0 = y ? d0->y : d0->x;
     signed int relCoord1 = y ? d1->y : d1->x;
@@ -408,6 +445,9 @@ unsigned char findLabdas(struct vec3* d0, struct vec3* d1, signed int* labda0, s
     return false;
 }
 
+//Clip a line between two 3D vectors, so that it will never:
+//1: draw points which are outside the FOV
+//2: experience a wrap-around because of integer arithmetic
 unsigned char clipLine(struct vec3* d0, struct vec3* d1, unsigned char* x0, unsigned char* x1){
     signed int labda0, labda1;
 
@@ -432,8 +472,11 @@ unsigned char clipLine(struct vec3* d0, struct vec3* d1, unsigned char* x0, unsi
     return 0;
 }
 
+//Draw the face of a voxel
 void voxelFace(struct face *f0){
     unsigned char wt = f0->wt;
+
+/*
     struct vec3 allVecs[4];
     allVecs[0] = f0->v0, allVecs[1] = f0->v1, allVecs[2] = f0->v2, allVecs[3] = f0->v3;
 
@@ -443,15 +486,35 @@ void voxelFace(struct face *f0){
         struct vec3 next = {(sub.x * cosAngle - sub.z * sinAngle), sub.y << 4, (sub.x * sinAngle + sub.z * cosAngle)};
         allVecs[i] = next;
     }
+*/
 
     unsigned char xExt0 = 0, xExt1 = 0;
     unsigned char hor0 = 0, hor1 = 0;
+    unsigned char ret0 = 0, ret1 = 0;
 
-    unsigned char ret0 = clipLine(allVecs + 0, allVecs + 1, &xExt0, &xExt1);
-    if (ret0 == 0) hor0 = voxelTriangle(allVecs + 0, allVecs + 1, xExt0, xExt1, wt);
+    if (f0->use2D){
+        xExt0 = f0->s0.x;
+        xExt1 = f0->s1.x;
+    }
+    else {
+        ret0 = clipLine(&(f0->v0), &(f0->v1), &xExt0, &xExt1);
+        ret1 = clipLine(&(f0->v2), &(f0->v3), &xExt0, &xExt1);
 
-    unsigned char ret1 = clipLine(allVecs + 2, allVecs + 3, &xExt0, &xExt1);
-    if (ret1 == 0) hor1 = voxelTriangle(allVecs + 2, allVecs + 3, xExt0, xExt1, wt);
+        f0->s0.x = MIDX + (f0->v0.x * SCALING) / f0->v0.z;
+        f0->s0.y = MIDY + (f0->v0.y * SCALING) / f0->v0.z;
+
+        f0->s1.x = MIDX + (f0->v1.x * SCALING) / f0->v1.z;
+        f0->s1.y = MIDY + (f0->v1.y * SCALING) / f0->v1.z;
+
+        f0->s2.x = MIDX + (f0->v2.x * SCALING) / f0->v2.z;
+        f0->s2.y = MIDY + (f0->v2.y * SCALING) / f0->v2.z;
+
+        f0->s3.x = MIDX + (f0->v3.x * SCALING) / f0->v3.z;
+        f0->s3.y = MIDY + (f0->v3.y * SCALING) / f0->v3.z;
+    }
+
+    if (ret0 == 0) hor0 = voxelTriangle(&(f0->s0), &(f0->s1), xExt0, xExt1, wt);
+    if (ret1 == 0) hor1 = voxelTriangle(&(f0->s2), &(f0->s3), xExt0, xExt1, wt);
 
     unsigned char topY = 0, botY = 0;
 
@@ -469,6 +532,8 @@ void voxelFace(struct face *f0){
     case 2: botY = MIDY - SCALING; break;
     }
 
+    sprintf(vidmem + 1760, "x0: %d, x1: %d", xExt0, xExt1);
+
     fillRectangle(xExt0, topY, xExt1, botY, wt);
     vertLine(xExt0, topY, botY, true);
     vertLine(xExt1, topY, botY, true);
@@ -478,20 +543,24 @@ void voxelFace(struct face *f0){
     return;
 }
 
+//Calculate the midpoint of a face
 void avgVec(struct face *f0, struct vec3 *v0){
-    v0->x = (f0->v0.x + f0->v1.x + f0->v2.x + f0->v3.x) >> 2;
-    v0->y = (f0->v0.y + f0->v1.y + f0->v2.y + f0->v3.y) >> 2;
-    v0->z = (f0->v0.z + f0->v1.z + f0->v2.z + f0->v3.z) >> 2;
+    v0->x = ((f0->v0.x >> TRIGPRECISION) + (f0->v1.x >> TRIGPRECISION) + (f0->v2.x >> TRIGPRECISION) + (f0->v3.x >> TRIGPRECISION)) >> 2;
+    v0->y = ((f0->v0.y >> TRIGPRECISION) + (f0->v1.y >> TRIGPRECISION) + (f0->v2.y >> TRIGPRECISION) + (f0->v3.y >> TRIGPRECISION)) >> 2;
+    v0->z = ((f0->v0.z >> TRIGPRECISION) + (f0->v1.z >> TRIGPRECISION) + (f0->v2.z >> TRIGPRECISION) + (f0->v3.z >> TRIGPRECISION)) >> 2;
 }
 
+//Calculate the norm of a vector
 inline int vec2Dist(struct vec3 *v0){
     return v0->x * v0->x + v0->y * v0->y + v0->z * v0->z;
 }
 
+//Compare two 3D co-ordinates by their distance to the origin (used during sorting)
 int cmpVec3(struct vec3 *v0, struct vec3 *v1){
     return vec2Dist(v1) - vec2Dist(v0);
 }
 
+//Compare two faces by their distance to the origin (used during sorting)
 int cmpFace(struct face *f0, struct face *f1){
     struct vec3 v0 = {0,0,0}, v1 = {0,0,0};
     avgVec(f0, &v0);
@@ -499,21 +568,63 @@ int cmpFace(struct face *f0, struct face *f1){
     return vec2Dist(&v1) - vec2Dist(&v0);
 }
 
+//Draw a voxel
 void drawVoxel(struct vec3 *vector){
     struct vec3 points[8];
 
+    unsigned char use2D = true;
+
     for (unsigned char i = 0; i < 8; i++){
-        points[i].x = (i & 0b1) * voxelSize + vector->x;
-        points[i].y = ((i & 0b10) >> 1) * voxelSize + vector->y;
-        points[i].z = ((i & 0b100) >> 2) * voxelSize + vector->z;
+        int pointsAbsX = (i & 0b1) * voxelSize + vector->x;
+        int pointsAbsY = ((i & 0b10) >> 1) * voxelSize + vector->y;
+        int pointsAbsZ = ((i & 0b100) >> 2) * voxelSize + vector->z;
+
+        struct vec3 sub = {pointsAbsX, pointsAbsY, pointsAbsZ};
+        struct vec3 next = {(sub.x * cosAngle - sub.z * sinAngle), sub.y << TRIGPRECISION, (sub.x * sinAngle + sub.z * cosAngle)};
+
+        points[i] = next;
+
+        use2D &= inRangeTotal(&next);
     }
+
+    const unsigned char pointInds[16] = {7,6,5,4,6,2,4,0,3,7,1,5,2,3,0,1};
 
     struct face faces[4];
 
-    faces[0].v0 = points[7], faces[0].v1 = points[6], faces[0].v2 = points[5], faces[0].v3 = points[4], faces[0].wt = false;
-    faces[1].v0 = points[6], faces[1].v1 = points[2], faces[1].v2 = points[4], faces[1].v3 = points[0], faces[1].wt = true;
-    faces[2].v0 = points[3], faces[2].v1 = points[7], faces[2].v2 = points[1], faces[2].v3 = points[5], faces[2].wt = true;
-    faces[3].v0 = points[2], faces[3].v1 = points[3], faces[3].v2 = points[0], faces[3].v3 = points[1], faces[3].wt = false;
+    //faces[0].v0 = points[7], faces[0].v1 = points[6], faces[0].v2 = points[5], faces[0].v3 = points[4];
+    //faces[1].v0 = points[6], faces[1].v1 = points[2], faces[1].v2 = points[4], faces[1].v3 = points[0];
+    //faces[2].v0 = points[3], faces[2].v1 = points[7], faces[2].v2 = points[1], faces[2].v3 = points[5];
+    //faces[3].v0 = points[2], faces[3].v1 = points[3], faces[3].v2 = points[0], faces[3].v3 = points[1];
+
+    for (unsigned char i = 0; i < 4; i++){
+        faces[i].v0 = points[pointInds[4*i + 0]];
+        faces[i].v1 = points[pointInds[4*i + 1]];
+        faces[i].v2 = points[pointInds[4*i + 2]];
+        faces[i].v3 = points[pointInds[4*i + 3]];
+
+        faces[i].use2D = use2D;
+    }
+
+    if (use2D){
+        for (unsigned char i = 0; i < 4; i++){
+            faces[i].s0.x = MIDX + (points[pointInds[4*i + 0]].x * SCALING) / points[pointInds[4*i + 0]].z;
+            faces[i].s0.y = MIDY + (points[pointInds[4*i + 0]].y * SCALING) / points[pointInds[4*i + 0]].z;
+
+            faces[i].s1.x = MIDX + (points[pointInds[4*i + 1]].x * SCALING) / points[pointInds[4*i + 1]].z;
+            faces[i].s1.y = MIDY + (points[pointInds[4*i + 1]].y * SCALING) / points[pointInds[4*i + 1]].z;
+
+            faces[i].s2.x = MIDX + (points[pointInds[4*i + 2]].x * SCALING) / points[pointInds[4*i + 2]].z;
+            faces[i].s2.y = MIDY + (points[pointInds[4*i + 2]].y * SCALING) / points[pointInds[4*i + 2]].z;
+
+            faces[i].s3.x = MIDX + (points[pointInds[4*i + 3]].x * SCALING) / points[pointInds[4*i + 3]].z;
+            faces[i].s3.y = MIDY + (points[pointInds[4*i + 3]].y * SCALING) / points[pointInds[4*i + 3]].z;
+        }
+    }
+
+    faces[0].wt = false;
+    faces[1].wt = true;
+    faces[2].wt = true;
+    faces[3].wt = false;
 
     qsort(faces, 4, sizeof(struct face), cmpFace);
 
@@ -527,29 +638,18 @@ void drawVoxel(struct vec3 *vector){
     //voxelFace(points[2], points[3], points[0], points[1], false);
 }
 
-void initializeVoxels(void){
-    for (unsigned int i = 0; i < voxelLen; i++){
-        voxelList[i].x = voxelList[i].x;
-        voxelList[i].y = voxelList[i].y;
-        voxelList[i].z = voxelList[i].z;
-    }
-}
-
+//Walk through maze in 3D
 void maze(void){
     setWindow(windowTLX, windowTLY, windowBRX, windowBRY);
     startGraphics(WHITEGFS);
 
     srand(getTime());
 
-    initializeVoxels();
-
 #if 1
     while (true){
         while (getKey() == keyNone);
 
         fillRectangle(windowTLX, windowTLY, windowBRX, windowBRY, false);
-
-        unsigned int startTime = getTime();
 
         unsigned char walkState = 0xFF;
 
@@ -646,7 +746,10 @@ void maze(void){
             break;
         }
 
+        unsigned int startTime = getTime();
+
         //Since the viewing position only changes a small amount, the list will always be (nearly) sorted, so using qsort is a bad idea
+        //We use it anyway
         qsort(voxelList, voxelLen, sizeof(struct vec3), cmpVec3);
 
         for (unsigned char i = 0; i < voxelLen; i++){

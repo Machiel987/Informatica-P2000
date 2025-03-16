@@ -24,7 +24,7 @@ unsigned char windowBRY = 71;
 
 void initializeScreen(unsigned char color){
     for (unsigned int i = 0; i < 1919; i++) vidmem[i] = 32;
-    for (unsigned int i = windowTLY / 3; i <= windowBRY / 3; i ++) vidmem[80*i + windowTLX / 2 - 1] = color;
+    for (unsigned int i = windowTLY / 3; i <= windowBRY / 3; i++) vidmem[80*i + windowTLX / 2 - 1] = color;
 }
 
 //Fills all LUTs and initializes screen, must be called before attempting graphics routines
