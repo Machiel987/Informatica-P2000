@@ -15,7 +15,7 @@
 #define TRIGPRECISION 4
 
 #define LABDAPRECISION 6
-#define LABDAPRECBITS ((int)(1 << LABDAPRECISION))
+#define LABDAPRECBITS (int)(1 << LABDAPRECISION)
 #define NOLABDA -1000
 
 const static unsigned char windowTLX = 8, windowTLY = 6, windowBRX = 72, windowBRY = 70;
@@ -278,21 +278,33 @@ void traverseMaze(void){
 //Uses two 3D co-ordinates and two single X co-ordinates which encode how far the triangle should be extended if it clips outside the screen.
 unsigned char voxelTriangle(struct screenVec2 *s0, struct screenVec2* s1, unsigned char xExt0, unsigned char xExt1, unsigned char wt){
     unsigned char xBeg, yBeg, xa, ya, xb, yb;
-    
-    xBeg = s0->x;
-    yBeg = s0->y;
-    
-    xb = s1->x;
-    yb = s1->y;
+
+    unsigned char xExtreme;
+    if ((s0->y < MIDY) ^ GT_INT(s0->y, s1->y)){
+        xExtreme = xExt0;
+
+        xBeg = s1->x;
+        yBeg = s1->y;
+        
+        xb = s0->x;
+        yb = s0->y;
+    }
+    else{
+        xExtreme = xExt1;
+        
+        xBeg = s0->x;
+        yBeg = s0->y;
+        
+        xb = s1->x;
+        yb = s1->y;
+    }
 
     xa = xBeg;
     ya = yBeg;
 
     unsigned char horY;
-    if (s0->y < MIDY)
-        horY = MAX(ya,yb);
-    else
-        horY = MIN(ya,yb);
+    if (s0->y < MIDY) horY = MAX(ya,yb);
+    else horY = MIN(ya, yb);
 
     //sprintf(vidmem + 1760, "(%d, %d) -> (%d, %d)", xa, ya, xb, yb);
 
@@ -307,8 +319,10 @@ unsigned char voxelTriangle(struct screenVec2 *s0, struct screenVec2* s1, unsign
     int error = dx + dy;
     int e2;
 
+    horzLine(xa, xExtreme, ya, wt);
+
     while(true){
-        vertLine(xa, ya, horY, wt);
+        //vertLine(xa, ya, horY, wt);
         setPixel(xa, ya, true);
         
         if (xa == xb && ya == yb) break;
@@ -322,14 +336,15 @@ unsigned char voxelTriangle(struct screenVec2 *s0, struct screenVec2* s1, unsign
         if (e2 - dx < 0){
             error += dx;
             ya += sy;
+            horzLine(xa, xExtreme, ya, wt);
         }
     }
 
-    if (xBeg != xExt0) fillRectangle(xBeg, yBeg, xExt0, horY, wt);
-    if (xa != xExt1) fillRectangle(xa, ya, xExt1, horY, wt);
+    //if (xBeg != xExt0) fillRectangle(xBeg, yBeg, xExt0, horY, wt);
+    //if (xa != xExt1) fillRectangle(xa, ya, xExt1, horY, wt);
 
-    vertLine(xExt0, yBeg, horY, true);
-    vertLine(xExt1, ya, horY, true);
+    vertLine(xExtreme, yBeg, horY, true);
+    vertLine(xExtreme, ya, horY, true);
 
     //sprintf(vidmem + 1840, "(%u, %u), (%u, %u)", v0.x, v0.y, v1.x, v1.y);
 
@@ -532,8 +547,6 @@ void voxelFace(struct face *f0){
     case 2: botY = MIDY - SCALING; break;
     }
 
-    sprintf(vidmem + 1760, "x0: %d, x1: %d", xExt0, xExt1);
-
     fillRectangle(xExt0, topY, xExt1, botY, wt);
     vertLine(xExt0, topY, botY, true);
     vertLine(xExt1, topY, botY, true);
@@ -568,11 +581,27 @@ int cmpFace(struct face *f0, struct face *f1){
     return vec2Dist(&v1) - vec2Dist(&v0);
 }
 
+void convertFace2D(struct face *f0){
+    if (!(f0->use2D)) return;
+
+    f0->s0.x = MIDX + (f0->v0.x * SCALING) / f0->v0.z;
+    f0->s1.x = MIDX + (f0->v1.x * SCALING) / f0->v1.z;
+    f0->s2.x = f0->s0.x;
+    f0->s3.x = f0->s1.x;
+
+    f0->s0.y = MIDY + (f0->v0.y * SCALING) / f0->v0.z;
+    f0->s1.y = MIDY + (f0->v1.y * SCALING) / f0->v1.z;
+    f0->s2.y = MIDY + (f0->v2.y * SCALING) / f0->v2.z;
+    f0->s3.y = MIDY + (f0->v3.y * SCALING) / f0->v3.z;
+}
+
 //Draw a voxel
 void drawVoxel(struct vec3 *vector){
     struct vec3 points[8];
+    const unsigned char pointInds[16] = {7,6,5,4,6,2,4,0,3,7,1,5,2,3,0,1};
 
-    unsigned char use2D = true;
+    unsigned char use2D[8];
+    unsigned char skipVoxel = true;
 
     for (unsigned char i = 0; i < 8; i++){
         int pointsAbsX = (i & 0b1) * voxelSize + vector->x;
@@ -583,18 +612,16 @@ void drawVoxel(struct vec3 *vector){
         struct vec3 next = {(sub.x * cosAngle - sub.z * sinAngle), sub.y << TRIGPRECISION, (sub.x * sinAngle + sub.z * cosAngle)};
 
         points[i] = next;
+        unsigned char irt = inRangeTotal(&next);
 
-        use2D &= inRangeTotal(&next);
+        use2D[i] = irt;
+
+        skipVoxel &= ~irt;
     }
 
-    const unsigned char pointInds[16] = {7,6,5,4,6,2,4,0,3,7,1,5,2,3,0,1};
+    if (skipVoxel) return;
 
     struct face faces[4];
-
-    //faces[0].v0 = points[7], faces[0].v1 = points[6], faces[0].v2 = points[5], faces[0].v3 = points[4];
-    //faces[1].v0 = points[6], faces[1].v1 = points[2], faces[1].v2 = points[4], faces[1].v3 = points[0];
-    //faces[2].v0 = points[3], faces[2].v1 = points[7], faces[2].v2 = points[1], faces[2].v3 = points[5];
-    //faces[3].v0 = points[2], faces[3].v1 = points[3], faces[3].v2 = points[0], faces[3].v3 = points[1];
 
     for (unsigned char i = 0; i < 4; i++){
         faces[i].v0 = points[pointInds[4*i + 0]];
@@ -602,23 +629,9 @@ void drawVoxel(struct vec3 *vector){
         faces[i].v2 = points[pointInds[4*i + 2]];
         faces[i].v3 = points[pointInds[4*i + 3]];
 
-        faces[i].use2D = use2D;
-    }
+        //unsigned char useAll = use2D[pointInds[4*i+0]] & use2D[pointInds[4*i+1]] & use2D[pointInds[4*i+2]] & use2D[pointInds[4*i+3]];
 
-    if (use2D){
-        for (unsigned char i = 0; i < 4; i++){
-            faces[i].s0.x = MIDX + (points[pointInds[4*i + 0]].x * SCALING) / points[pointInds[4*i + 0]].z;
-            faces[i].s0.y = MIDY + (points[pointInds[4*i + 0]].y * SCALING) / points[pointInds[4*i + 0]].z;
-
-            faces[i].s1.x = MIDX + (points[pointInds[4*i + 1]].x * SCALING) / points[pointInds[4*i + 1]].z;
-            faces[i].s1.y = MIDY + (points[pointInds[4*i + 1]].y * SCALING) / points[pointInds[4*i + 1]].z;
-
-            faces[i].s2.x = MIDX + (points[pointInds[4*i + 2]].x * SCALING) / points[pointInds[4*i + 2]].z;
-            faces[i].s2.y = MIDY + (points[pointInds[4*i + 2]].y * SCALING) / points[pointInds[4*i + 2]].z;
-
-            faces[i].s3.x = MIDX + (points[pointInds[4*i + 3]].x * SCALING) / points[pointInds[4*i + 3]].z;
-            faces[i].s3.y = MIDY + (points[pointInds[4*i + 3]].y * SCALING) / points[pointInds[4*i + 3]].z;
-        }
+        faces[i].use2D = use2D[pointInds[4*i+0]] & use2D[pointInds[4*i+1]] & use2D[pointInds[4*i+2]] & use2D[pointInds[4*i+3]];
     }
 
     faces[0].wt = false;
@@ -626,16 +639,69 @@ void drawVoxel(struct vec3 *vector){
     faces[2].wt = true;
     faces[3].wt = false;
 
-    qsort(faces, 4, sizeof(struct face), cmpFace);
+    struct face relFaces[2];
+    struct vec3 relScaled[2];
 
-    for (unsigned char i = 0; i < 4; i++){
-        voxelFace(faces + i);
+    struct vec3 scaled0 = {(faces[0].v0.x + faces[0].v1.x) >> 5, (faces[0].v0.y + faces[0].v1.y) >> 5, (faces[0].v0.z + faces[0].v1.z) >> 5};
+    struct vec3 scaled1 = {(faces[1].v0.x + faces[1].v1.x) >> 5, (faces[1].v0.y + faces[1].v1.y) >> 5, (faces[1].v0.z + faces[1].v1.z) >> 5};
+    struct vec3 scaled2 = {(faces[2].v0.x + faces[2].v1.x) >> 5, (faces[2].v0.y + faces[2].v1.y) >> 5, (faces[2].v0.z + faces[2].v1.z) >> 5};
+    struct vec3 scaled3 = {(faces[3].v0.x + faces[3].v1.x) >> 5, (faces[3].v0.y + faces[3].v1.y) >> 5, (faces[3].v0.z + faces[3].v1.z) >> 5};
+
+    if (cmpVec3(&scaled0, &scaled3) & 0x8000){
+        relFaces[0] = faces[3];
+        relScaled[0] = scaled3;
+    }
+    else{
+        relFaces[0] = faces[0];
+        relScaled[0] = scaled0;
     }
 
-    //voxelFace(points[7], points[6], points[5], points[4], false);
-    //voxelFace(points[6], points[2], points[4], points[0], true);
-    //voxelFace(points[3], points[7], points[1], points[5], true);
-    //voxelFace(points[2], points[3], points[0], points[1], false);
+    if (cmpVec3(&scaled1, &scaled2) & 0x8000){
+        relFaces[1] = faces[2];
+        relScaled[1] = scaled2;
+    }
+    else{
+        relFaces[1] = faces[1];
+        relScaled[1] = scaled1;
+    }
+
+    if (relFaces[0].use2D)
+        convertFace2D(relFaces + 0);
+    else if (relFaces[1].use2D)
+        convertFace2D(relFaces + 1);
+
+    if (relFaces[0].use2D && relFaces[1].use2D){
+        if (!memcmp(&relFaces[0].v0, &relFaces[1].v1, sizeof (struct vec3))){
+            relFaces[1].s1 = relFaces[0].s0;
+            relFaces[1].s3 = relFaces[0].s2;
+    
+            relFaces[1].s0.x = MIDX + (relFaces[1].v0.x * SCALING) / relFaces[1].v0.z;
+            relFaces[1].s2.x = relFaces[1].s0.x;
+    
+            relFaces[1].s0.y = MIDY + (relFaces[1].v0.y * SCALING) / relFaces[1].v0.z;
+            relFaces[1].s2.y = MIDY + (relFaces[1].v2.y * SCALING) / relFaces[1].v2.z;
+        }
+    
+        if (!memcmp(&relFaces[0].v1, &relFaces[1].v0, sizeof (struct vec3))){
+            relFaces[1].s0 = relFaces[0].s1;
+            relFaces[1].s2 = relFaces[0].s3;
+    
+            relFaces[1].s1.x = MIDX + (relFaces[1].v1.x * SCALING) / relFaces[1].v1.z;
+            relFaces[1].s3.x = relFaces[1].s1.x;
+    
+            relFaces[1].s1.y = MIDY + (relFaces[1].v1.y * SCALING) / relFaces[1].v1.z;
+            relFaces[1].s3.y = MIDY + (relFaces[1].v3.y * SCALING) / relFaces[1].v3.z;
+        }
+    }
+
+    if (cmpVec3(relScaled + 0, relScaled + 1) & 0x8000){
+        voxelFace(relFaces + 0);
+        voxelFace(relFaces + 1);
+    }
+    else{
+        voxelFace(relFaces + 1);
+        voxelFace(relFaces + 0);
+    }
 }
 
 //Walk through maze in 3D
@@ -645,15 +711,17 @@ void maze(void){
 
     srand(getTime());
 
-#if 1
+#if 3
     while (true){
-        while (getKey() == keyNone);
+        unsigned char key;
+
+        while ((key = getKey()) == keyNone);
 
         fillRectangle(windowTLX, windowTLY, windowBRX, windowBRY, false);
 
         unsigned char walkState = 0xFF;
 
-        switch (getKey())
+        switch (key)
         {
         case keyUp:
             if (4 < angleY && angleY <= 12) walkState = 0;
@@ -748,8 +816,15 @@ void maze(void){
 
         unsigned int startTime = getTime();
 
-        //Since the viewing position only changes a small amount, the list will always be (nearly) sorted, so using qsort is a bad idea
-        //We use it anyway
+        //Since the viewing position only changes a small amount, the list will always be (nearly) sorted, so using qsort alone is a bad idea
+        //Therefore we introduce a small amount of noise to the system
+        for (unsigned char i = 0; i < 2; i++){
+            unsigned int i = rand() % voxelLen, j = rand() % voxelLen;
+            struct vec3 temp = {voxelList[i].x, voxelList[i].y, voxelList[i].z};
+            voxelList[i] = voxelList[j];
+            voxelList[j] = temp;
+        }
+
         qsort(voxelList, voxelLen, sizeof(struct vec3), cmpVec3);
 
         for (unsigned char i = 0; i < voxelLen; i++){

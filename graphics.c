@@ -86,7 +86,7 @@ inline static void unsafeSetPixel(unsigned char x, unsigned char y, unsigned cha
 
 //Set pixel to ON, without screen check
 #if 0
-inline static void unsafeSetPixelOn(unsigned char x, unsigned char y){
+void unsafeSetPixelOn(unsigned char x, unsigned char y) {
     unsigned char* charAdr  = (unsigned char*) (yAdrLUT[y] & 0xFFF0) + (x >> 1);
     unsigned char  pixelNum = (x & 1) + (yAdrLUT[y] & 0xF);
 
@@ -96,11 +96,9 @@ inline static void unsafeSetPixelOn(unsigned char x, unsigned char y){
 
     return;
 }
-#endif
 
 //Set pixel to OFF, without screen check
-#if 0
-inline static void unsafeSetPixelOff(unsigned char x, unsigned char y){
+void unsafeSetPixelOff(unsigned char x, unsigned char y) SDCCCALL {
     unsigned char* charAdr  = (unsigned char*) (yAdrLUT[y] & 0xFFF0) + (x >> 1);
     unsigned char  pixelNum = (x & 1) + (yAdrLUT[y] & 0xF);
 
@@ -112,7 +110,7 @@ inline static void unsafeSetPixelOff(unsigned char x, unsigned char y){
 
 //Sets a given pixel. Coordinates are in pixel, not character coordinates
 //wt = white (1 if pixel will be set to white, 0 if set to black)
-void setPixel(unsigned char x, unsigned char y, unsigned char wt){
+void setPixel(unsigned char x, unsigned char y, unsigned char wt) SDCCCALL {
     if (!inRange(x, y)) return;
 
     unsafeSetPixel(x, y, wt);
@@ -120,7 +118,7 @@ void setPixel(unsigned char x, unsigned char y, unsigned char wt){
     return;
 }
 
-unsigned char getPixel(unsigned char x, unsigned char y){
+unsigned char getPixel(unsigned char x, unsigned char y) {
     unsigned char* charAdr = (unsigned char*) (yAdrLUT[y] & 0xFFF0) + (x >> 1);
     unsigned char  pixelNum = (x & 1) + (yAdrLUT[y] & 0xF);
 
@@ -159,7 +157,8 @@ void drawLine(unsigned char x0, unsigned char y0, unsigned char x1, unsigned cha
 }
 
 //Draws or erases a horizontal line without window checking
-void unsafeHorzLine(unsigned char xmin, unsigned char xmax, unsigned char y, unsigned char wt){
+void unsafeHorzLine(unsigned char xmin, unsigned char xmax, unsigned char y, unsigned char wt);
+#if 0
     unsigned char* bgnAdr = (unsigned char*) ((yAdrLUT[y] & 0xFFF0) + ((xmin + 1) >> 1));
     //unsigned char* endAdr = (unsigned char*) ((yAdrLUT[y] & 0xFFF0) + ((xmax + 1) >> 1));
 
@@ -170,21 +169,21 @@ void unsafeHorzLine(unsigned char xmin, unsigned char xmax, unsigned char y, uns
         switch (yAdrLUT[y] & 0xF)
         {
         case 0:
-            for (unsigned char i = 0; maxI - i > 0; i++){
+            for (unsigned char i = 0; i != maxI; i++){
                 *adr |= 0b00100011;
                 adr++;
             }
             break;
         
         case 2:
-            for (unsigned char i = 0; maxI - i > 0; i++){
+            for (unsigned char i = 0; i != maxI; i++){
                 *adr |= 0b00101100;
                 adr++;
             }
             break;
 
         case 4:
-            for (unsigned char i = 0; maxI - i > 0; i++){
+            for (unsigned char i = 0; i != maxI; i++){
                 *adr |= 0b01110000;
                 adr++;
             }
@@ -195,21 +194,21 @@ void unsafeHorzLine(unsigned char xmin, unsigned char xmax, unsigned char y, uns
         switch (yAdrLUT[y] & 0xF)
         {
         case 0:
-            for (unsigned char i = 0; maxI - i > 0; i++){
+            for (unsigned char i = 0; i != maxI; i++){
                 *adr &= ~0b00000011;
                 adr++;
             }
             break;
         
         case 2:
-            for (unsigned char i = 0; maxI - i > 0; i++){
+            for (unsigned char i = 0; i != maxI; i++){
                 *adr &= ~0b00001100;
                 adr++;
             }
             break;
 
         case 4:
-            for (unsigned char i = 0; maxI - i > 0; i++){
+            for (unsigned char i = 0; i != maxI; i++){
                 *adr &= ~0b01010000;
                 adr++;
             }
@@ -220,6 +219,7 @@ void unsafeHorzLine(unsigned char xmin, unsigned char xmax, unsigned char y, uns
     setPixel(xmin, y, wt);
     setPixel(xmax, y, wt);
 }
+    #endif
 
 //Draws or erases a horizontal line
 void horzLine(unsigned char x0, unsigned char x1, unsigned char y, unsigned char wt){
@@ -229,6 +229,8 @@ void horzLine(unsigned char x0, unsigned char x1, unsigned char y, unsigned char
     xmin = MAX(xmin, windowTLX);
     unsigned char xmax = MAX(x0, x1);
     xmax = MIN(xmax, windowBRX);
+
+    if (xmax < xmin) return;
 
     unsafeHorzLine(xmin, xmax, y, wt);
 }
@@ -253,19 +255,20 @@ void horzLineColor(unsigned char x0, unsigned char x1, unsigned char y, unsigned
 #endif
 
 //Draws or erases a vertical line without window checking
-void unsafeVertLine(unsigned char x, unsigned char ymin, unsigned char ymax, unsigned char wt){
+void unsafeVertLine(unsigned char x, unsigned char ymin, unsigned char ymax, unsigned char wt); 
+#if 0
     unsigned char* bgnAdr = (unsigned char*) ((yAdrLUT[ymin + 2] & 0xFFF0) + (x >> 1));
     unsigned char* endAdr = (unsigned char*) ((yAdrLUT[ymax + 1] & 0xFFF0) + (x >> 1));
 
     setPixel(x, ymin, wt);
-    setPixel(x, ymax, wt);
 
     if (ymin != ymax){
+        setPixel(x, ymax, wt);
         setPixel(x, ymin + 1, wt);
         setPixel(x, ymax - 1, wt);
     }
 
-    if (bgnAdr > endAdr) return;
+    //if (bgnAdr > endAdr) return;
 
     unsigned char* adr = bgnAdr;
 
@@ -308,6 +311,7 @@ void unsafeVertLine(unsigned char x, unsigned char ymin, unsigned char ymax, uns
     
     return;
 }
+#endif
 
 //Draws or erases a vertical line
 void vertLine(unsigned char x, unsigned char y0, unsigned char y1, unsigned char wt){
@@ -371,8 +375,51 @@ void rectangleColor(unsigned char x0, unsigned char y0, unsigned char x1, unsign
 }
 #endif
 
+void unsafeFillBlock(unsigned char xmin, unsigned char ymin, unsigned char xmax, unsigned char ymax, unsigned char dest);
+
+void unsafeFillRectangle(unsigned char xmin, unsigned char ymin, unsigned char xmax, unsigned char ymax, unsigned char wt){
+    unsigned char xminOl = xmin % 2;
+    unsigned char xmaxOl = xmax % 2;
+
+    if (xminOl) unsafeVertLine(xmin, ymin, ymax, wt);
+    if (!xmaxOl) unsafeVertLine(xmax, ymin, ymax, wt);
+
+    unsigned char yminOl = yAdrLUT[ymin] & 0xF;
+    unsigned char ymaxOl = yAdrLUT[ymax] & 0xF;
+
+    switch (yminOl)
+    {
+    case 2:
+        unsafeHorzLine(xmin, xmax, ymin + 1, wt);
+
+    case 4:
+        unsafeHorzLine(xmin, xmax, ymin, wt);
+    }
+
+    switch (ymaxOl)
+    {
+    case 2:
+        unsafeHorzLine(xmin, xmax, ymax - 1, wt);
+    
+    case 0:
+        unsafeHorzLine(xmin, xmax, ymax, wt);
+    }
+
+    unsigned char dest = wt ? 127 : 32;
+    unsigned char* p_char = (unsigned char*) (yAdrLUT[ymin + 2] & 0xFFF0) + ((1 + xmin) >> 1);
+    unsigned char lineLen = ((xmax + 1) >> 1) - ((1 + xmin) >> 1);
+    unsigned char lineDiff = 80 - lineLen;
+
+    for (unsigned int yAdr = yAdrLUT[ymin + 2] & 0xFFF0; yAdr != (yAdrLUT[ymax + 1] & 0xFFF0); yAdr += 80){
+        for (unsigned char i = 0; i < lineLen; i++){
+            *p_char = dest;
+            p_char++;
+        }
+        p_char += lineDiff;
+    }
+}
+
 //Draws or erases a filled rectangle
-#if 1
 void fillRectangle(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char wt){
     unsigned char xmin = MIN(x0, x1);
     xmin = MAX(xmin, windowTLX);
@@ -394,42 +441,8 @@ void fillRectangle(unsigned char x0, unsigned char y0, unsigned char x1, unsigne
         return;
     }
 
-    unsigned char xminOl = xmin % 2;
-    unsigned char xmaxOl = xmax % 2;
-
-    if (xminOl) vertLine(xmin, ymin, ymax, wt);
-    if (!xmaxOl) vertLine(xmax, ymin, ymax, wt);
-
-    unsigned char yminOl = yAdrLUT[ymin] & 0xF;
-    unsigned char ymaxOl = yAdrLUT[ymax] & 0xF;
-
-    switch (yminOl)
-    {
-    case 2:
-        horzLine(xmin, xmax, ymin + 1, wt);
-
-    case 4:
-        horzLine(xmin, xmax, ymin, wt);
-    }
-
-    switch (ymaxOl)
-    {
-    case 2:
-        horzLine(xmin, xmax, ymax - 1, wt);
-    
-    case 0:
-        horzLine(xmin, xmax, ymax, wt);
-    }
-
-    for (unsigned int yAdr = yAdrLUT[ymin + 2] & 0xFFF0; yAdr <= (yAdrLUT[ymax - 2] & 0xFFF0); yAdr += 80){
-        for (unsigned int xAdr = ((1 + xmin) >> 1); xAdr < ((xmax + 1) >> 1); xAdr++){
-            unsigned char* p_char = (unsigned char*) (yAdr + xAdr);
-            if (wt) *p_char = 127;
-            else *p_char = 32;
-        }
-    }
+    unsafeFillRectangle(xmin, ymin, xmax, ymax, wt);
 }
-#endif
 
 //Draws a filled rectangle in the given color (use _COLOR_GFS)
 #if 0

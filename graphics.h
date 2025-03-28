@@ -1,5 +1,11 @@
 //Header file for graphics
 
+#ifdef REGSCALL
+    #define SDCCCALL __sdcccall(1)
+#else
+    #define SDCCCALL
+#endif
+
 //Implement booleans
 #define false 0
 #define true 1
@@ -45,7 +51,9 @@ extern unsigned char pxNumToChar[];
 void startGraphics(unsigned char color);
 void setWindow(unsigned char TLX, unsigned char TLY, unsigned char BRX, unsigned char BRY);
 //unsigned char* getWindow(void);
-void setPixel(unsigned char x, unsigned char y, unsigned char wt);
+void setPixel(unsigned char x, unsigned char y, unsigned char wt) SDCCCALL ;
+//void unsafeSetPixelOn(unsigned char x, unsigned char y) SDCCCALL ;
+//void unsafeSetPixelOff(unsigned char x, unsigned char y) SDCCCALL ;
 unsigned char getPixel(unsigned char x, unsigned char y);
 void drawLine(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char wt);
 //void drawLineColor(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char color);
@@ -58,6 +66,7 @@ void vertLine(unsigned char x, unsigned char y0, unsigned char y1, unsigned char
 void rectangle(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char wt);
 //void rectangleColor(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char color);
 void fillRectangle(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char wt);
+void unsafeFillRectangle(unsigned char xmin, unsigned char ymin, unsigned char xmax, unsigned char ymax, unsigned char wt);
 //void fillRectangleColor(unsigned char x0, unsigned char y0, unsigned char x1, unsigned char y1, unsigned char color);
 void drawText(unsigned char x, unsigned char y, char* text, unsigned char dblH, unsigned char color);
 //void circle(unsigned char xm, unsigned char ym, unsigned char r, unsigned char wt);

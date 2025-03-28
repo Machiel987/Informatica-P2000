@@ -3,6 +3,9 @@
 #define GT_INT(a, b) (((a) ^ 0x8000) > ((b) ^ 0x8000))
 #define LT_INT(a, b) (((a) ^ 0x8000) < ((b) ^ 0x8000))
 
+#define GE_INT(a, b) (((a) ^ 0x8000) >= ((b) ^ 0x8000))
+#define LE_INT(a, b) (((a) ^ 0x8000) <= ((b) ^ 0x8000))
+
 //Functions for finding min and max (defined in macro for better performance)
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) > (b) ? (b) : (a))

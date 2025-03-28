@@ -1,5 +1,5 @@
 main.cas: main.c graphics.h graphics.asm graphics.c games.h utils.c utils.h keyboard.c keyboard.h game_of_life.c game_of_life.asm countries.c typing.c reaction_test.c maze.c
-	zcc +p2000 -O3 -SO3 -DAMALLOC --max-allocs-per-node20000 -compiler=sdcc --math32 -o main \
+	zcc +p2000 -O3 -SO3 -DAMALLOC -DREGSCALL --max-allocs-per-node20000 --list --c-code-in-asm -compiler=sdcc --math32 -o main \
 	main.c graphics.c graphics.asm utils.c keyboard.c game_of_life.c game_of_life.asm countries.c typing.c reaction_test.c maze.c \
 	-create-app
 
