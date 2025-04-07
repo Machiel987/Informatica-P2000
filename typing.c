@@ -6,7 +6,7 @@
 #include "games.h"
 #include "utils.h"
 #include "keyboard.h"
-
+/*
 char sentenceDutch[] = 
     "het is ook een mythe dat we door \n"
     "de digitalisering daadwerkelijk met \n"
@@ -22,6 +22,7 @@ char sentenceDutch[] =
     "dit niet direct dat onze sociale \n"
     "vaardigheden zijn afgenomen t.o.v. \n"
     "een aantal jaren terug.";
+*/
 
 char sentenceEnglish[] =
     "it does not help that these spats \n"
@@ -35,6 +36,7 @@ char sentenceEnglish[] =
     "are headquartered in ireland, lured \n"
     "there by dublins low corporate tax \n"
     "regime.";
+
 
 void multiLineText(unsigned char x, unsigned char y, unsigned char* text){
     unsigned char* disp_p = vidmem + x + 80*y;
@@ -66,28 +68,21 @@ static void drawInfoScreen(void){
     drawText(4, 30, "The shift-key on this particular", false, WHITETEXT);
     drawText(4, 33, "Philips P2000T computer is somewhat", false, WHITETEXT);
     drawText(4, 36, "hard to press, so the whole text ", false, WHITETEXT);
-    drawText(4, 39, "is to be typed using lowercase only", false, WHITETEXT);
-    drawText(4, 45, "Enjoy!", false, WHITETEXT);
+    drawText(4, 39, "is to be typed using lowercase only.", false, WHITETEXT);
+    drawText(4, 42, "Press the 0 key at any point to stop", false, WHITETEXT);
+    drawText(4, 45, "the mini-game.", false, WHITETEXT);
+    drawText(4, 51, "Enjoy!", false, WHITETEXT);
 
-    drawText(30, 70, "Press Enter to continue", false, WHITETEXT);
+    drawText(20, 70, "Press Enter to continue", false, WHITETEXT);
 
     while (getKey() != keyEnter);
 }
 
-//language = 0 -> Dutch, language = 1 -> English
-void typing(unsigned char language){
+void typing(void){
     unsigned char* sentence;
+    sentence = sentenceEnglish;
 
-    switch (language)
-    {
-    case 1:
-        sentence = sentenceEnglish;
-        break;
-
-    default:
-        sentence = sentenceDutch;
-        break;
-    }
+    setWindow(2, 0, 79, 71);
 
     startGraphics(WHITEGFS);
     drawInfoScreen();
@@ -108,6 +103,8 @@ void typing(unsigned char language){
     unsigned char lineNum = 1;
 
     while (*sentence_p != '\0'){
+        if (getKey() == key0) return;
+
         if (*sentence_p == '\n'){
             disp_p = vidmem + x + 80 * (y+lineNum);
             lineNum++;

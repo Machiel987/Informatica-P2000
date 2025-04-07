@@ -98,7 +98,7 @@ void unsafeSetPixelOn(unsigned char x, unsigned char y) {
 }
 
 //Set pixel to OFF, without screen check
-void unsafeSetPixelOff(unsigned char x, unsigned char y) SDCCCALL {
+void unsafeSetPixelOff(unsigned char x, unsigned char y) __sdcccall(1) {
     unsigned char* charAdr  = (unsigned char*) (yAdrLUT[y] & 0xFFF0) + (x >> 1);
     unsigned char  pixelNum = (x & 1) + (yAdrLUT[y] & 0xF);
 
@@ -110,7 +110,15 @@ void unsafeSetPixelOff(unsigned char x, unsigned char y) SDCCCALL {
 
 //Sets a given pixel. Coordinates are in pixel, not character coordinates
 //wt = white (1 if pixel will be set to white, 0 if set to black)
-void setPixel(unsigned char x, unsigned char y, unsigned char wt) SDCCCALL {
+void setPixel(unsigned char x, unsigned char y, unsigned char wt) __sdcccall(1) {
+    if (!inRange(x, y)) return;
+
+    unsafeSetPixel(x, y, wt);
+
+    return;
+}
+
+static void setPixelNoRegsCall(unsigned char x, unsigned char y, unsigned char wt){
     if (!inRange(x, y)) return;
 
     unsafeSetPixel(x, y, wt);
@@ -466,6 +474,18 @@ void fillRectangleColor(unsigned char x0, unsigned char y0, unsigned char x1, un
 }
 #endif
 
+void drawChar(unsigned char x, unsigned char y, unsigned char in, unsigned char dblH, unsigned char color){
+    unsigned char* adr = (unsigned char*) ((yAdrLUT[y] & 0xFFF0) + (x >> 1));
+
+    if (dblH) {*(adr - 2) = color; *(adr - 1) = 0xD;}
+    else *(adr - 1) = color;
+
+    *adr = in;
+
+    if (dblH) {{*(adr + 1) = 0xC; *(adr + 2) = WHITEGFS;}}
+    else {*(adr + 1) = WHITEGFS;}
+}
+
 //Prints text in a given color to the screen. This text can be normal or double height
 //Due to the text being drawn on pixel coordinates, the text might not match the desired location perfectly
 void drawText(unsigned char x, unsigned char y, char* text, unsigned char dblH, unsigned char color){
@@ -486,13 +506,13 @@ void drawText(unsigned char x, unsigned char y, char* text, unsigned char dblH, 
 }
 
 //Draws or erases a safe/unsafe circle depending on function pointer
-#if 0
+#if 1
 void circleSU(unsigned char xm, unsigned char ym, unsigned char r, unsigned char wt, void (*f)(unsigned char, unsigned char, unsigned char)){
     unsigned char t1 = r / 16;
     unsigned char x = r;
     unsigned char y = 0;
 
-    while (x - y >= 0){
+    while (x >= y){
         f(xm + x, ym + y, wt);
         f(xm - x, ym + y, wt);
         f(xm + x, ym - y, wt);
@@ -504,8 +524,8 @@ void circleSU(unsigned char xm, unsigned char ym, unsigned char r, unsigned char
 
         y += 1;
         t1 += y;
-        char t2 = t1 - x;
-        if (t2 >= 0){
+        signed char t2 = t1 - x;
+        if (!(t2 & 0x80)){
             t1 = t2;
             x -= 1;
         }
@@ -516,12 +536,12 @@ void circleSU(unsigned char xm, unsigned char ym, unsigned char r, unsigned char
 #endif
 
 //Draws or erases a hollow circle using the midpoint circle algorithm
-#if 0
-void circle(unsigned char xm, unsigned char ym, unsigned char r, unsigned char wt){
+#if 1
+void drawCircle(unsigned char xm, unsigned char ym, unsigned char r, unsigned char wt){
     if (inRange(xm - r, ym - r) && inRange(xm + r, ym + r))
         circleSU(xm, ym, r, wt, unsafeSetPixel);
     else
-        circleSU(xm, ym, r, wt, setPixel);
+        circleSU(xm, ym, r, wt, setPixelNoRegsCall);
 }
 #endif
 
@@ -610,8 +630,8 @@ void drawSprite(struct sprite* buf, unsigned char x0, unsigned char y0){
 #endif
 
 //Rolls a line from characters start to end one pixel to the left, going from startAdr to endAdr
-void rollLeft(unsigned char length, unsigned char* startAdr);
-#if 0
+//void rollLeft(unsigned char length, unsigned char* startAdr);
+#if 1
 void rollLeft(unsigned char length, unsigned char* startAdr){
     unsigned char* currentAdr = startAdr;
     unsigned char flip = rollTableX[*currentAdr];
@@ -632,8 +652,8 @@ void rollLeft(unsigned char length, unsigned char* startAdr){
 #endif
 
 //Rolls a line from characters start to end one pixel to the right, going from startAdr to endAdr
-void rollRight(unsigned char length, unsigned char* endAdr);
-#if 0
+//void rollRight(unsigned char length, unsigned char* endAdr);
+#if 1
 void rollRight(unsigned char length, unsigned char* endAdr){
     unsigned char* currentAdr = endAdr;
     unsigned char flip = rollTableX[*currentAdr];

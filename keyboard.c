@@ -35,6 +35,7 @@ unsigned char getNiceKeyL(void){
     case keyX: return 'x';
     case keyY: return 'y';
     case keyZ: return 'z';
+    case key0: return '0';
     case keySpace: return ' ';
     case keyDot: return '.';
     case keyComma: return ',';

@@ -248,6 +248,7 @@ void tetris(void){
             while (getTime() - startTime < 10){ //Use this number to set the speed of the game
                 if (getKey() == keySpace) break;
                 if (getKey() == prevKey) continue;
+                if (getKey() == key0) return;
                 prevKey = getKey();
                 if (prevKey == keyNone) continue;
                 
@@ -307,7 +308,7 @@ void tetris(void){
             }
 
             score++;
-            sprintf(scoreStr, "%i", score);
+            sprintf(scoreStr, "%d", score);
             drawText(4, 70, scoreStr, false, WHITETEXT);
 
             setWindow(rollTLX, rollTLY, rollBRX, rollBRY);

@@ -410,10 +410,30 @@ unsigned char handleFloorChange(unsigned char* floor, unsigned int* xPos, unsign
     return 1;
 }
 
+static void drawInfoScreen(void){
+    drawText(10, 0, "LCL game", true, WHITETEXT);
+
+    drawText(4, 9,  "Welcome to the LCL game for the", false, WHITETEXT);
+    drawText(4, 12, "Philips P2000T home computer. Walk", false, WHITETEXT);
+    drawText(4, 15, "around the school and get used to the", false, WHITETEXT);
+    drawText(4, 18, "layout. In most classrooms, a mini-", false, WHITETEXT);
+    drawText(4, 21, "game will be available, corresponding", false, WHITETEXT);
+    drawText(4, 24, "to the subject being taught there.", false, WHITETEXT);
+    drawText(4, 27, "Press the arrows to move around and", false, WHITETEXT);
+    drawText(4, 30, "Enjoy!", false, WHITETEXT);
+
+    drawText(20, 70, "Press Enter to continue", false, WHITETEXT);
+
+    while (getKey() != keyEnter);
+}
+
 //Main function for walking through a map
 void walker(void){
     unsigned char floor = 0;
     unsigned int posX = 284, posY = 320;
+
+    startGraphics(WHITEGFS);
+    drawInfoScreen();
 
     floorStart: //When there is a floor change, code begins here
 
@@ -527,7 +547,10 @@ void walker(void){
             
             topHs++;
 
-            while(yCoords[botHs->yIndex] > posY + rollBRY) botHs--;
+            while(yCoords[botHs->yIndex] > posY + rollBRY){
+                if (botHs == topEnd){botHs++; break;}
+                botHs--;
+            }
 
             for (const struct vLine* i = leftVs; i <= rightVs; i++){
                 if (yCoords[i->y0Index] <= rollTLY + posY && yCoords[i->y1Index] >= rollTLY + posY)
@@ -544,7 +567,10 @@ void walker(void){
             posY++;
             rollAreaUp();
 
-            while (yCoords[topHs->yIndex] < posY + rollTLY) topHs++;
+            while (yCoords[topHs->yIndex] < posY + rollTLY){
+                if (topHs == botEnd){topHs--; break;}
+                topHs++;
+            }
 
             while (yCoords[(++botHs)->yIndex] <= posY + rollBRY){
                 if (botHs == botEnd) break;
@@ -582,7 +608,10 @@ void walker(void){
             
             leftVs++;
 
-            while (xCoords[rightVs->xIndex] > posX + rollBRX) rightVs--;
+            while (xCoords[rightVs->xIndex] > posX + rollBRX){
+                if (rightVs == leftEnd){rightVs++; break;}
+                rightVs--;
+            }
             
             break;
 
@@ -600,7 +629,10 @@ void walker(void){
                 }
             }
 
-            while (xCoords[leftVs->xIndex] < posX + rollTLX) leftVs++;
+            while (xCoords[leftVs->xIndex] < posX + rollTLX){
+                if (leftVs == rightEnd){leftVs--; break;}
+                leftVs++;
+            }
 
             while (xCoords[(++rightVs)->xIndex] <= posX + rollBRX){
                 if (rightVs == rightEnd) break;
@@ -648,13 +680,13 @@ void walker(void){
             break;
 
         case DUTC:
-            typing(0);
+            hangman();
             posY -= entrance.offSetY;
             goto floorStart;
             break;
 
         case ENGL:
-            typing(1);
+            typing();
             posY -= entrance.offSetY;
             goto floorStart;
             break;

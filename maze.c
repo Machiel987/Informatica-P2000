@@ -704,22 +704,61 @@ void drawVoxel(struct vec3 *vector){
     }
 }
 
+static void drawInfoScreen(void){
+    drawText(10, 0, "3D walker", true, WHITETEXT);
+
+    drawText(4, 9,  "This is nothing but a celebration of", false, WHITETEXT);
+    drawText(4, 12, "what is possible on the P2000:", false, WHITETEXT);
+    drawText(4, 15, "A full-3D voxel renderer, including", false, WHITETEXT);
+    drawText(4, 18, "perspective, off-grid camera", false, WHITETEXT);
+    drawText(4, 24, "positions and rotations, and filled", false, WHITETEXT);
+    drawText(4, 27, "voxel sides. This should be regarded", false, WHITETEXT);
+    drawText(4, 30, "as a showcase of the possibilities", false, WHITETEXT);
+    drawText(4, 33, "that even old hardware offers when", false, WHITETEXT);
+    drawText(4, 36, "pushed to the limit. Therefore, bugs", false, WHITETEXT);
+    drawText(4, 39, "may very well exist.", false, WHITETEXT);
+
+    drawText(4, 45, "Press the arrows to move around on", false, WHITETEXT);
+    drawText(6, 48, "the xy-plane", false, WHITETEXT);
+    drawText(4, 51, "Press the (,) and (.) keys to move", false, WHITETEXT);
+    drawText(6, 54, "up and down", false, WHITETEXT);
+    drawText(4, 57, "Press the A and S keys to rotate", false, WHITETEXT);
+    drawText(6, 60, "the camera", false, WHITETEXT);
+    drawText(4, 63, "Press the 0 key at any point to", false, WHITETEXT);
+    drawText(6, 66, "exit", false, WHITETEXT);
+
+
+    drawText(30, 70, "Press Enter to continue", false, WHITETEXT);
+
+    while (getKey() != keyEnter);
+}
+
 //Walk through maze in 3D
 void maze(void){
+    setWindow(2, 0, 79, 70);
+    startGraphics(WHITEGFS);
+
+    drawInfoScreen();
+
     setWindow(windowTLX, windowTLY, windowBRX, windowBRY);
     startGraphics(WHITEGFS);
 
+    signed int height = 0;
+
     srand(getTime());
 
-#if 3
+    while (getKey() == keyEnter);
+
     while (true){
         unsigned char key;
 
         while ((key = getKey()) == keyNone);
+        if (key == key0) break;
 
         fillRectangle(windowTLX, windowTLY, windowBRX, windowBRY, false);
 
         unsigned char walkState = 0xFF;
+
 
         switch (key)
         {
@@ -804,11 +843,15 @@ void maze(void){
             break;
         
         case 4:
+            if (height == 4) break;
+            height++;
             for (unsigned int i = 0; i < voxelLen; i++)
                 voxelList[i].y--;
             break;
         
         case 5:
+            if (height == -4) break;
+            height--;
             for (unsigned int i = 0; i < voxelLen; i++)
                 voxelList[i].y++;
             break;
@@ -831,17 +874,9 @@ void maze(void){
             drawVoxel(voxelList + i);
         }
 
-        sprintf(vidmem + 1840, "Time: %d", getTime() - startTime);
+        //sprintf(vidmem + 1840, "Time: %d", getTime() - startTime);
     }
-#endif
 
-    //voxelTriangle(-5, 20, -10, 30, -20, 40, true);
-
-    //sprintf(vidmem + 1840, "done");
-
-    //drawMaze(2, 0, 78, 68);
-
-    //traverseMaze();
-
-    while (1);
+    setWindow(2, 0, 79, 70);
+    startGraphics(WHITETEXT);
 }

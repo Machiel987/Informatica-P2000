@@ -6,6 +6,6 @@ void tetris(void);
 void reactionTest(void);
 void gameOfUr(void);
 void hangman(void);
-void typing(unsigned char language);
+void typing(void);
 void countries(void);
 void maze(void);

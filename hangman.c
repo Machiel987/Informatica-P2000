@@ -7,7 +7,7 @@
 #include "utils.h"
 #include "keyboard.h"
 
-unsigned char* words[1] = {
+unsigned char* words[300] = {
 "aan", "aanbod", "aanraken", "aanval", "aap", "aardappel", "aarde",
 "aardig", "acht", "achter", "actief", "activiteit", "ademen", "af",
 "afgelopen", "afhangen", "afmaken", "afname", "afspraak", "afval",
@@ -161,26 +161,19 @@ unsigned char* words[1] = {
 const static unsigned char windowTLX = 2, windowTLY = 0, windowBRX = 79, windowBRY = 70;
 
 static void drawInfoScreen(void){
-    drawText(10, 0, "The Royal Game of Ur", true, WHITETEXT);
+    drawText(10, 0, "Hangman (Dutch)", true, WHITETEXT);
 
-    drawText(4, 9,  "As an ancient 2-player race game, the", false, WHITETEXT);
-    drawText(4, 12, "Royal Game of Ur is one of the oldest", false, WHITETEXT);
-    drawText(4, 15, "games ever discovered, dating back to", false, WHITETEXT);
-    drawText(4, 18, "around 3000 BC. It originated in", false, WHITETEXT);
-    drawText(4, 24, "ancient Mesopotamia and remained ", false, WHITETEXT);
-    drawText(4, 27, "popular in certain parts of the world", false, WHITETEXT);
-    drawText(4, 30, "until the 1950s. Each player is given", false, WHITETEXT);
-    drawText(4, 33, "7 stones, with the goal of moving all", false, WHITETEXT);
-    drawText(4, 36, "to the end of the board. Your stones ", false, WHITETEXT);
-    drawText(4, 39, "move clockwise while the computers", false, WHITETEXT);
-    drawText(4, 42, "stones move counter-clockwise. Dice ", false, WHITETEXT);
-    drawText(4, 45, "are rolled every move and a single ", false, WHITETEXT);
-    drawText(4, 48, "stone may be moved that number of", false, WHITETEXT);
-    drawText(4, 51, "squares. Stones from the opponent", false, WHITETEXT);
-    drawText(4, 54, "may be captured, but not your own.", false, WHITETEXT);
-    drawText(6, 57, "-Use up & down arrows to cycle", false, WHITETEXT);
-    drawText(8, 60, "through options", false, WHITETEXT);
-    drawText(6, 63, "-Press Enter to play that option", false, WHITETEXT);
+    drawText(4, 9,  "Hangman, in the Netherlands known as", false, WHITETEXT);
+    drawText(4, 12, "galgje, is a truely classic game with", false, WHITETEXT);
+    drawText(4, 15, "extremely simple rules:", false, WHITETEXT);
+    drawText(4, 18, "The computer will pick a random word", false, WHITETEXT);
+    drawText(4, 24, "and it is your job to try to guess", false, WHITETEXT);
+    drawText(4, 27, "that word. Choose a letter from the", false, WHITETEXT);
+    drawText(4, 30, "alphabet and the computer will show", false, WHITETEXT);
+    drawText(4, 33, "whether that letter exists in the", false, WHITETEXT);
+    drawText(4, 36, "mystery word. If it does, you will ", false, WHITETEXT);
+    drawText(4, 39, "also be shown where.", false, WHITETEXT);
+    drawText(4, 42, "11 strikes and you're out!", false, WHITETEXT);
 
     drawText(30, 70, "Press Enter to continue", false, WHITETEXT);
 
@@ -190,54 +183,109 @@ static void drawInfoScreen(void){
 void hangman(void){
     setWindow(windowTLX, windowTLY, windowBRX, windowBRY);
     startGraphics(WHITEGFS);
+    drawInfoScreen();
 
     start:
 
-    //drawInfoScreen();
-
     startGraphics(WHITEGFS);
 
+    drawText(10, 0, "Hangman", true, WHITETEXT);
+
+    unsigned char guessedList[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0};
+
     srand(getTime());
-    unsigned char* secretWord = words[rand() % 500];
+    unsigned char* secretWord = words[rand() % (sizeof(words) / sizeof(unsigned char*))];
     unsigned char wordLen = strlen(secretWord);
 
-    drawText(4, 10, secretWord, false, WHITETEXT);
+    unsigned char* baseAdr = vidmem + 401;
+    unsigned char* adr = baseAdr;
+
+    for (unsigned char i = 0; i < wordLen; i++)
+        *adr++ = '_';
+
+    drawText(4, 10, "Mystery word:", false, WHITETEXT);
+    drawText(4, 24, "Your guess:", false, WHITETEXT);
+    drawText(4, 45, "Not in word:", false, WHITETEXT);
 
     unsigned char guessed = false;
-    unsigned char guessNum = 0;
+    unsigned char score = 0;
 
-    while ((++guessNum < 15) && !guessed){
+    while (score < 10 && !guessed){
         while (getKey() == keyEnter);
 
         unsigned char key = 0;
         unsigned char prevKey = 0;
-        while (getKey() != keyEnter){
-            if (getNiceKeyL() == 0xFF) continue;
+        unsigned char newKey;
+
+        while ((newKey = getNiceKeyL()) != '\n'){
+            if (newKey == '\0') continue;
+            if (newKey == '0') return;
+
             prevKey = key;
-            key = getNiceKeyL();
+            key = newKey;
+
+            drawChar(4, 30, key, false, WHITETEXT);
         }
+
+        unsigned char invalidGuess = false;
+        for (unsigned char i = 0; i < sizeof(guessedList); i++)
+            if (guessedList[i] == key) invalidGuess = true;
+        
+        if (invalidGuess) continue;
 
         key = prevKey;
 
-        unsigned char* adr = vidmem + 1681;
+        *(baseAdr - 1) = WHITETEXT;
 
-        *(vidmem + 1680) = WHITETEXT;
+        adr = baseAdr;
 
         guessed = true;
+        unsigned char scoreInc = true;
+
         for (unsigned char i = 0; i < wordLen; i++){
-            if (secretWord[i] == key)
+            if (secretWord[i] == key){
                 *adr = key;
+                scoreInc = false;
+            }
             else
                 if (*adr != secretWord[i]) guessed = false;
 
             adr++;
         }
+
+        if (scoreInc){
+            guessedList[score] = key;
+            score++;
+        }
+
+        drawText(6, 48, guessedList, false, WHITETEXT);
+
+        //sprintf(vidmem + 1840, "Score: %d", score);
+
+        switch (score)
+        {
+        case 1: horzLine(75, 40, 65, true);  break;
+        case 2: vertLine(40, 65, 20, true);  break;
+        case 3: horzLine(40, 65, 20, true);  break;
+        case 4: vertLine(65, 20, 26, true);  break;
+        case 5: drawCircle(65, 30, 4, true); break;
+        case 6: vertLine(65, 34, 42, true);  break;
+        case 7: drawLine(65, 42, 61, 51, true);  break;
+        case 8: drawLine(65, 42, 69, 51, true);  break;
+        case 9: drawLine(65, 36, 60, 34, true);  break;
+        case 10: drawLine(65, 36, 70, 34, true); break;
+        }
     }
 
+    fillRectangle(windowTLX, windowTLY, windowBRX, windowBRY, false);
+
     if(guessed)
-        drawText(20, 20, "You won!", true, GREENTEXT);
+        drawText(20, 10, "You won!", true, GREENTEXT);
     else
-        drawText(20, 20, "You lost!", false, REDTEXT);
+        drawText(20, 10, "You lost!", true, REDTEXT);
+
+    drawText(4, 21, "Press the 0 key to exit", false, WHITETEXT);
+    drawText(4, 24, "Press the spacebar to play again", false, WHITETEXT);
 
     while (getKey() != key0 && getKey() != keySpace);
 

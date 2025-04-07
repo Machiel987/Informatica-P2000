@@ -11,8 +11,8 @@
     GLOBAL _unsafeHorzLine
     GLOBAL _unsafeVertLine
     GLOBAL _unsafeFillBlock
-    GLOBAL _rollLeft
-    GLOBAL _rollRight
+    GLOBAL _rollLeft2
+    GLOBAL _rollRight2
     GLOBAL _rollUp
     GLOBAL _rollDown
     GLOBAL _yAdrLUT
@@ -454,7 +454,7 @@ DoneB:
     RET
 
 
-_rollLeft:
+_rollLeft2:
     LD B,A                  ; B = counter (DJNZ)
     PUSH DE
     EX DE,HL                ; HL = currentAdr
@@ -494,7 +494,7 @@ LoopL:
     RET
 
 
-_rollRight:
+_rollRight2:
     LD B,A                  ; B = counter (DJNZ)
     PUSH DE
     EX DE,HL                ; HL = currentAdr
